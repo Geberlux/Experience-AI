@@ -1,0 +1,18 @@
+@import "tailwindcss";
+
+@theme {
+  --color-gamer-dark: #0a0a0a;
+  --color-gamer-card: #161616;
+  --color-gamer-neon: #00f2ff;
+  --color-gamer-accent: #7000ff;
+  --color-gamer-danger: #ff0055;
+  
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-display: "Orbitron", sans-serif;
+}
+
+@layer base {
+  body {
+    @apply bg-gamer-dark text-white font-sans;
+  }
+}

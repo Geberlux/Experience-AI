@@ -1,0 +1,83 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // helper functions
+    function isSignedIn() { return request.auth != null; }
+    function isVerified() { return isSignedIn() && request.auth.token.email_verified == true; }
+    function isAdmin() { return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)); }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    // --- Users ---
+    function isValidUser(data) {
+      return data.uid == request.auth.uid 
+        && data.email is string && data.email.size() <= 150
+        && data.role in ['admin', 'client']
+        && (data.get('displayName', '') is string);
+    }
+
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isOwner(userId) && isValidUser(incoming()) && incoming().role == 'client';
+      allow update: if (isOwner(userId) || isAdmin()) && isValidUser(incoming()) && (
+        (isOwner(userId) && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'email']))
+        || isAdmin()
+      );
+    }
+
+    // --- Products ---
+    function isValidProduct(data) {
+      return data.name is string && data.name.size() <= 200
+        && data.price is number && data.price >= 0
+        && data.stock is int && data.stock >= 0
+        && data.category in ['keyboards', 'mice', 'controllers']
+        && (data.get('imageUrl', '') is string);
+    }
+
+    match /products/{productId} {
+      allow get, list: if true; // Public catalog
+      allow create: if isAdmin() && isValidProduct(incoming()) && isValidId(productId);
+      allow update: if isAdmin() && isValidProduct(incoming());
+      allow delete: if isAdmin();
+    }
+
+    // --- Orders ---
+    function isValidOrder(data) {
+      return data.userId == request.auth.uid
+        && data.total is number && data.total >= 0
+        && data.status in ['pending', 'paid', 'shipped', 'cancelled']
+        && data.items is list && data.items.size() > 0;
+    }
+
+    match /orders/{orderId} {
+      allow get: if isOwner(existing().userId) || isAdmin();
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isVerified() && isValidOrder(incoming()) && isValidId(orderId);
+      allow update: if (isAdmin() || (isOwner(existing().userId) && existing().status == 'pending')) && (
+        (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'mercadopagoId']))
+        || (isOwner(existing().userId) && incoming().status == 'cancelled' && incoming().diff(existing()).affectedKeys().hasOnly(['status']))
+      );
+    }
+
+    // --- Contacts ---
+    match /contacts/{contactId} {
+      allow create: if incoming().email is string && incoming().email.size() <= 150;
+      allow read: if isAdmin();
+    }
+
+    // --- Admin List (Write Protected) ---
+    match /admins/{userId} {
+      allow read: if isSignedIn();
+      allow write: if false; // Managed via Firebase Console or special script
+    }
+  }
+}
