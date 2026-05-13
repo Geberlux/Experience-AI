@@ -61,17 +61,31 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   };
 
   const syncUserToFirestore = async (user: any) => {
-    const userRef = doc(db, 'personas', user.uid);
-    const userDoc = await getDoc(userRef);
-    
-    if (!userDoc.exists()) {
-      await setDoc(userRef, {
-        uid: user.uid,
-        email: user.email,
-        displayName: user.displayName || displayName,
-        role: user.email === 'curuzumartinez@gmail.com' ? 'admin' : 'client',
-        createdAt: new Date().toISOString()
+    try {
+      const userRef = doc(db, 'personas', user.uid);
+      const userDoc = await getDoc(userRef);
+      
+      if (!userDoc.exists()) {
+        const userData = {
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName || displayName || 'Usuario Elite',
+          role: user.email === 'curuzumartinez@gmail.com' ? 'admin' : 'client',
+          createdAt: new Date().toISOString()
+        };
+        
+        console.log('Sincronizando nuevo usuario en Firestore:', userData);
+        await setDoc(userRef, userData);
+      }
+    } catch (err: any) {
+      console.error('Error crítico al sincronizar con Firestore (Personas):', {
+        code: err.code,
+        message: err.message,
+        stack: err.stack,
+        userId: user.uid
       });
+      // We throw a more specific error to be caught by the handlers
+      throw new Error(`fire_sync_failed: ${err.message}`);
     }
   };
 
@@ -92,7 +106,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       await syncUserToFirestore(result.user);
       handleSuccess();
     } catch (err: any) {
-      if (err instanceof FirebaseError) {
+      if (err.message?.startsWith('fire_sync_failed')) {
+        setError('Acceso concedido pero error al crear perfil. Contacta soporte.');
+      } else if (err instanceof FirebaseError) {
         if (err.code === 'auth/account-exists-with-different-credential') {
           setError('Este correo ya está asociado a un método de ingreso diferente.');
         } else {
@@ -115,7 +131,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       await syncUserToFirestore(result.user);
       handleSuccess();
     } catch (err: any) {
-      if (err instanceof FirebaseError) {
+      if (err.message?.startsWith('fire_sync_failed')) {
+        setError('Credenciales correctas pero error de perfil. Contacta soporte.');
+      } else if (err instanceof FirebaseError) {
         switch (err.code) {
           case 'auth/user-not-found':
             setError('No existe una cuenta con este correo.');
@@ -148,10 +166,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     try {
       const result = await createUserWithEmailAndPassword(auth, email, password);
       await updateProfile(result.user, { displayName });
-      await syncUserToFirestore(result.user);
+      // Ensure sync gets the most recent data
+      await syncUserToFirestore({ ...result.user, displayName });
       handleSuccess();
     } catch (err: any) {
-      if (err instanceof FirebaseError) {
+      if (err.message?.startsWith('fire_sync_failed')) {
+        setError('Cuenta creada pero error al guardar perfil. Intenta loguearte.');
+      } else if (err instanceof FirebaseError) {
         if (err.code === 'auth/email-already-in-use') {
           setError('El correo ya está asociado a otra cuenta (Local o Google).');
         } else if (err.code === 'auth/weak-password') {
