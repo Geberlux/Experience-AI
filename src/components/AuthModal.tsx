@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Mail, Lock, User, LogIn, UserPlus, Chrome } from 'lucide-react';
+import { X, Mail, Lock, User, LogIn, UserPlus, Chrome, CheckCircle } from 'lucide-react';
 import { auth, googleProvider } from '../lib/firebase';
 import { 
   signInWithPopup, 
@@ -25,6 +25,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   const [displayName, setDisplayName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
 
   const reset = () => {
     setMode('options');
@@ -33,6 +34,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     setDisplayName('');
     setError('');
     setLoading(false);
+    setIsSuccess(false);
   };
 
   const syncUserToFirestore = async (user: any) => {
@@ -50,13 +52,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     }
   };
 
+  const handleSuccess = () => {
+    setIsSuccess(true);
+    setTimeout(() => {
+      onClose();
+      // Delay reset slightly after closing to avoid flickering
+      setTimeout(reset, 200);
+    }, 1500);
+  };
+
   const handleGoogleLogin = async () => {
     setLoading(true);
     try {
       const result = await signInWithPopup(auth, googleProvider);
       await syncUserToFirestore(result.user);
-      onClose();
-      reset();
+      handleSuccess();
     } catch (err: any) {
       setError('Error al conectar con Google.');
     } finally {
@@ -71,8 +81,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     try {
       const result = await signInWithEmailAndPassword(auth, email, password);
       await syncUserToFirestore(result.user);
-      onClose();
-      reset();
+      handleSuccess();
     } catch (err: any) {
       setError('Credenciales inválidas o usuario no existe.');
     } finally {
@@ -88,8 +97,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       const result = await createUserWithEmailAndPassword(auth, email, password);
       await updateProfile(result.user, { displayName });
       await syncUserToFirestore(result.user);
-      onClose();
-      reset();
+      handleSuccess();
     } catch (err: any) {
       setError('Error al registrar. El correo podría estar en uso.');
     } finally {
@@ -105,7 +113,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={onClose}
+            onClick={!loading && !isSuccess ? onClose : undefined}
             className="fixed inset-0 bg-black/80 backdrop-blur-md z-[200]"
           />
           <motion.div 
@@ -114,117 +122,152 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-gamer-card border border-white/10 rounded-3xl p-8 z-[201] shadow-2xl shadow-gamer-accent/20"
           >
-            <div className="flex justify-between items-center mb-8">
-              <h2 className="text-2xl font-display font-bold uppercase tracking-tighter">
-                {mode === 'options' ? 'Acceso Elite' : mode === 'login' ? 'Ingresar' : 'Unirse al Team'}
-              </h2>
-              <button onClick={onClose} className="p-2 hover:text-gamer-danger transition-colors">
-                <X />
-              </button>
-            </div>
-
-            {error && (
-              <div className="bg-gamer-danger/10 border border-gamer-danger text-gamer-danger p-3 rounded-lg text-xs font-bold mb-6">
-                {error}
+            {isSuccess ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center animate-in fade-in zoom-in duration-300">
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 200, damping: 10 }}
+                  className="w-20 h-20 bg-gamer-neon rounded-full flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(0,242,255,0.4)]"
+                >
+                  <CheckCircle size={48} className="text-black" />
+                </motion.div>
+                <h2 className="text-3xl font-display font-bold uppercase tracking-tighter mb-2">Ingreso Exitoso</h2>
+                <p className="text-white/40 font-medium">Bienvenido al Team Experience.</p>
               </div>
-            )}
-
-            {mode === 'options' && (
-              <div className="space-y-4">
-                <button 
-                  onClick={() => setMode('login')}
-                  className="w-full py-4 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center space-x-3 hover:border-gamer-neon transition-all group"
-                >
-                  <LogIn className="group-hover:text-gamer-neon" />
-                  <span className="font-bold">Ingreso Local</span>
-                </button>
-                <button 
-                  onClick={() => setMode('register')}
-                  className="w-full py-4 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center space-x-3 hover:border-gamer-accent transition-all group"
-                >
-                  <UserPlus className="group-hover:text-gamer-accent" />
-                  <span className="font-bold">Crear Cuenta</span>
-                </button>
-                <div className="py-4 flex items-center space-x-4">
-                  <div className="h-px bg-white/10 flex-1" />
-                  <span className="text-[10px] text-white/30 uppercase font-bold tracking-widest">O continúa con</span>
-                  <div className="h-px bg-white/10 flex-1" />
-                </div>
-                <button 
-                  onClick={handleGoogleLogin}
-                  disabled={loading}
-                  className="w-full py-4 bg-gamer-neon text-black rounded-2xl flex items-center justify-center space-x-3 font-bold hover:bg-white transition-all transform active:scale-95"
-                >
-                  <Chrome size={20} />
-                  <span>Ingresar con Google</span>
-                </button>
-              </div>
-            )}
-
-            {(mode === 'login' || mode === 'register') && (
-              <form onSubmit={mode === 'login' ? handleEmailLogin : handleRegister} className="space-y-4">
-                {mode === 'register' && (
-                  <div className="relative group">
-                    <User className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 group-focus-within:text-gamer-neon" size={18} />
-                    <input 
-                      required
-                      placeholder="Tu nombre real"
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 py-4 focus:border-gamer-neon focus:outline-none transition-all"
-                      value={displayName}
-                      onChange={e => setDisplayName(e.target.value)}
-                    />
-                  </div>
-                )}
-                <div className="relative group">
-                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 group-focus-within:text-gamer-neon" size={18} />
-                  <input 
-                    required
-                    type="email"
-                    placeholder="Email"
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 py-4 focus:border-gamer-neon focus:outline-none transition-all"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                  />
-                </div>
-                <div className="relative group">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 group-focus-within:text-gamer-neon" size={18} />
-                  <input 
-                    required
-                    type="password"
-                    placeholder="Contraseña"
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 py-4 focus:border-gamer-neon focus:outline-none transition-all"
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                  />
-                </div>
-                <button 
-                  type="submit"
-                  disabled={loading}
-                  className="w-full py-4 bg-gamer-accent text-white rounded-2xl font-bold uppercase tracking-widest hover:shadow-[0_0_20px_rgba(112,0,255,0.4)] transition-all"
-                >
-                  {loading ? 'Procesando...' : mode === 'login' ? 'Iniciar Sesión' : 'Registrarme'}
-                </button>
-                <div className="text-center mt-4">
-                  <button 
-                    type="button"
-                    onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
-                    className="text-xs text-white/40 hover:text-gamer-neon underline"
-                  >
-                    {mode === 'login' ? '¿No tienes cuenta? Regístrate' : '¿Ya tienes cuenta? Ingresa'}
+            ) : (
+              <>
+                <div className="flex justify-between items-center mb-8">
+                  <h2 className="text-2xl font-display font-bold uppercase tracking-tighter">
+                    {mode === 'options' ? 'Acceso Elite' : mode === 'login' ? 'Ingresar' : 'Unirse al Team'}
+                  </h2>
+                  <button onClick={onClose} className="p-2 hover:text-gamer-danger transition-colors">
+                    <X />
                   </button>
                 </div>
-                <button 
-                  type="button"
-                  onClick={() => setMode('options')}
-                  className="w-full text-[10px] text-white/20 uppercase font-bold tracking-widest mt-4 hover:text-white"
-                >
-                  Volver a opciones
-                </button>
-              </form>
+
+                {error && (
+                  <div className="bg-gamer-danger/10 border border-gamer-danger text-gamer-danger p-3 rounded-lg text-xs font-bold mb-6">
+                    {error}
+                  </div>
+                )}
+
+                {mode === 'options' && (
+                  <div className="space-y-4">
+                    <button 
+                      onClick={() => setMode('login')}
+                      className="w-full py-4 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center space-x-3 hover:border-gamer-neon transition-all group"
+                    >
+                      <LogIn className="group-hover:text-gamer-neon" />
+                      <span className="font-bold">Ingresar</span>
+                    </button>
+                    <button 
+                      onClick={() => setMode('register')}
+                      className="w-full py-4 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center space-x-3 hover:border-gamer-accent transition-all group"
+                    >
+                      <UserPlus className="group-hover:text-gamer-accent" />
+                      <span className="font-bold">Crear Cuenta</span>
+                    </button>
+                    <div className="py-4 flex items-center space-x-4">
+                      <div className="h-px bg-white/10 flex-1" />
+                      <span className="text-[10px] text-white/30 uppercase font-bold tracking-widest">O continúa con</span>
+                      <div className="h-px bg-white/10 flex-1" />
+                    </div>
+                    <button 
+                      onClick={handleGoogleLogin}
+                      disabled={loading}
+                      className="w-full py-4 bg-gamer-neon text-black rounded-2xl flex items-center justify-center space-x-3 font-bold hover:bg-white transition-all transform active:scale-95"
+                    >
+                      <Chrome size={20} />
+                      <span>Ingresar con Google</span>
+                    </button>
+                  </div>
+                )}
+
+                {(mode === 'login' || mode === 'register') && (
+                  <form onSubmit={mode === 'login' ? handleEmailLogin : handleRegister} className="space-y-4">
+                    {mode === 'register' && (
+                      <div className="relative group">
+                        <User className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 group-focus-within:text-gamer-neon" size={18} />
+                        <input 
+                          required
+                          placeholder="Tu nombre real"
+                          className="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 py-4 focus:border-gamer-neon focus:outline-none transition-all"
+                          value={displayName}
+                          onChange={e => setDisplayName(e.target.value)}
+                        />
+                      </div>
+                    )}
+                    <div className="relative group">
+                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 group-focus-within:text-gamer-neon" size={18} />
+                      <input 
+                        required
+                        type="email"
+                        placeholder="Email"
+                        className="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 py-4 focus:border-gamer-neon focus:outline-none transition-all"
+                        value={email}
+                        onChange={e => setEmail(e.target.value)}
+                      />
+                    </div>
+                    <div className="relative group">
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 group-focus-within:text-gamer-neon" size={18} />
+                      <input 
+                        required
+                        type="password"
+                        placeholder="Contraseña"
+                        className="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 py-4 focus:border-gamer-neon focus:outline-none transition-all"
+                        value={password}
+                        onChange={e => setPassword(e.target.value)}
+                      />
+                    </div>
+                    <button 
+                      type="submit"
+                      disabled={loading}
+                      className="w-full py-4 bg-gamer-accent text-white rounded-2xl font-bold uppercase tracking-widest hover:shadow-[0_0_20px_rgba(112,0,255,0.4)] transition-all"
+                    >
+                      {loading ? 'Procesando...' : mode === 'login' ? 'Iniciar Sesión' : 'Registrarme'}
+                    </button>
+
+                    <div className="py-2 flex items-center space-x-4">
+                      <div className="h-px bg-white/10 flex-1" />
+                      <span className="text-[10px] text-white/30 uppercase font-bold tracking-widest text-center">O</span>
+                      <div className="h-px bg-white/10 flex-1" />
+                    </div>
+
+                    <button 
+                      type="button"
+                      onClick={handleGoogleLogin}
+                      disabled={loading}
+                      className="w-full py-3 bg-white/5 border border-white/10 text-white rounded-2xl flex items-center justify-center space-x-3 font-bold hover:bg-white hover:text-black transition-all transform active:scale-95"
+                    >
+                      <Chrome size={18} />
+                      <span className="text-sm">Continuar con Google</span>
+                    </button>
+
+                    <div className="text-center mt-4">
+                      <button 
+                        type="button"
+                        onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
+                        className="text-xs text-white/40 hover:text-gamer-neon underline"
+                      >
+                        {mode === 'login' ? '¿No tienes cuenta? Regístrate' : '¿Ya tienes cuenta? Ingresa'}
+                      </button>
+                    </div>
+                    <button 
+                      type="button"
+                      onClick={() => setMode('options')}
+                      className="w-full text-[10px] text-white/20 uppercase font-bold tracking-widest mt-4 hover:text-white"
+                    >
+                      Volver a opciones
+                    </button>
+                  </form>
+                )}
+              </>
             )}
           </motion.div>
         </>
       )}
     </AnimatePresence>
+
   );
 };
