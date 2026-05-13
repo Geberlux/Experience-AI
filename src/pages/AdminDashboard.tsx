@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { db, handleFirestoreError, OperationType } from '../lib/firebase';
+import { db, handleFirestoreError, OperationType, auth } from '../lib/firebase';
 import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, writeBatch } from 'firebase/firestore';
 import { Product } from '../lib/products';
 import { Layout } from '../components/Layout';
@@ -13,6 +13,20 @@ const SEED_DATA: Partial<Product>[] = [
 
 export const AdminDashboard = () => {
   const [products, setProducts] = useState<Product[]>([]);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+  const [authorized, setAuthorized] = useState(false);
+
+  useEffect(() => {
+    const unsub = auth.onAuthStateChanged((user) => {
+      if (user && user.email === 'curuzumartinez@gmail.com') {
+        setAuthorized(true);
+      } else {
+        setAuthorized(false);
+      }
+      setCheckingAuth(false);
+    });
+    return () => unsub();
+  }, []);
 
   const handleSeed = async () => {
     if (products.length > 0) {
@@ -73,6 +87,23 @@ export const AdminDashboard = () => {
       handleFirestoreError(err, OperationType.DELETE, 'products');
     }
   };
+
+  if (checkingAuth) {
+    return (
+      <div className="pt-32 flex justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gamer-neon"></div>
+      </div>
+    );
+  }
+
+  if (!authorized) {
+    return (
+      <div className="pt-32 text-center">
+        <h1 className="text-3xl font-display font-bold text-gamer-danger uppercase italic">Acceso Denegado</h1>
+        <p className="text-white/40 mt-4 max-w-md mx-auto">Esta sección está restringida exclusivamente para la administración central de Experience.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="pt-24 pb-12 px-4 max-w-6xl mx-auto">
