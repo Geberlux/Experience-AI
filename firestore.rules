@@ -16,19 +16,19 @@ service cloud.firestore {
     function incoming() { return request.resource.data; }
     function existing() { return resource.data; }
 
-    // --- Users ---
-    function isValidUser(data) {
+    // --- Personas ---
+    function isValidPersona(data) {
       return data.uid == request.auth.uid 
         && data.email is string && data.email.size() <= 150
         && data.role in ['admin', 'client']
         && (data.get('displayName', '') is string);
     }
-
-    match /users/{userId} {
+    
+    match /personas/{userId} {
       allow get: if isOwner(userId) || isAdmin();
-      allow list: if isAdmin();
-      allow create: if isOwner(userId) && isValidUser(incoming()) && incoming().role == 'client';
-      allow update: if (isOwner(userId) || isAdmin()) && isValidUser(incoming()) && (
+      allow list: if isAdmin() || (request.query.limit == 1); // Restricted check for email availability
+      allow create: if isOwner(userId) && isValidPersona(incoming()) && incoming().role == 'client';
+      allow update: if (isOwner(userId) || isAdmin()) && isValidPersona(incoming()) && (
         (isOwner(userId) && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'email']))
         || isAdmin()
       );

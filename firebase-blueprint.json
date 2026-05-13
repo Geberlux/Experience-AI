@@ -1,8 +1,8 @@
 {
   "entities": {
-    "User": {
-      "title": "User",
-      "description": "User profile with roles and basic info",
+    "Persona": {
+      "title": "Persona",
+      "description": "Perfil de usuario con roles e información básica",
       "type": "object",
       "properties": {
         "uid": { "type": "string" },
@@ -56,9 +56,9 @@
     }
   },
   "firestore": {
-    "/users/{userId}": {
-      "schema": "User",
-      "description": "Individual user profiles"
+    "/personas/{userId}": {
+      "schema": "Persona",
+      "description": "Perfiles de usuario individuales"
     },
     "/products/{productId}": {
       "schema": "Product",

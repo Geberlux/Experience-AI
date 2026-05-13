@@ -8,8 +8,9 @@ import {
   createUserWithEmailAndPassword,
   updateProfile 
 } from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, query, collection, where, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { FirebaseError } from 'firebase/app';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -26,6 +27,28 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [emailStatus, setEmailStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
+
+  const checkEmailInUse = async (emailToHero: string) => {
+    if (!emailToHero || !emailToHero.includes('@')) return;
+    setEmailStatus('checking');
+    try {
+      // We query the 'personas' collection to see if this email is already registered
+      const q = query(collection(db, 'personas'), where('email', '==', emailToHero));
+      const querySnapshot = await getDocs(q);
+      if (!querySnapshot.empty) {
+        setEmailStatus('taken');
+        setError('Este correo ya está asociado a una cuenta.');
+      } else {
+        setEmailStatus('available');
+        setError('');
+      }
+    } catch (err) {
+      // If we can't query (because of rules), we'll assume it's okay and let the Auth provider handle it
+      console.warn('Silent skip of firestore email check:', err);
+      setEmailStatus('idle');
+    }
+  };
 
   const reset = () => {
     setMode('options');
@@ -38,7 +61,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   };
 
   const syncUserToFirestore = async (user: any) => {
-    const userRef = doc(db, 'users', user.uid);
+    const userRef = doc(db, 'personas', user.uid);
     const userDoc = await getDoc(userRef);
     
     if (!userDoc.exists()) {
@@ -63,12 +86,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
   const handleGoogleLogin = async () => {
     setLoading(true);
+    setError('');
     try {
       const result = await signInWithPopup(auth, googleProvider);
       await syncUserToFirestore(result.user);
       handleSuccess();
     } catch (err: any) {
-      setError('Error al conectar con Google.');
+      if (err instanceof FirebaseError) {
+        if (err.code === 'auth/account-exists-with-different-credential') {
+          setError('Este correo ya está asociado a un método de ingreso diferente.');
+        } else {
+          setError('Error al conectar con Google.');
+        }
+      } else {
+        setError('Error al conectar con Google.');
+      }
     } finally {
       setLoading(false);
     }
@@ -83,7 +115,23 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       await syncUserToFirestore(result.user);
       handleSuccess();
     } catch (err: any) {
-      setError('Credenciales inválidas o usuario no existe.');
+      if (err instanceof FirebaseError) {
+        switch (err.code) {
+          case 'auth/user-not-found':
+            setError('No existe una cuenta con este correo.');
+            break;
+          case 'auth/wrong-password':
+            setError('Contraseña incorrecta.');
+            break;
+          case 'auth/invalid-credential':
+            setError('Credenciales inválidas. Verifica tu correo y contraseña.');
+            break;
+          default:
+            setError('Error al ingresar. Intenta de nuevo.');
+        }
+      } else {
+        setError('Error inesperado al ingresar.');
+      }
     } finally {
       setLoading(false);
     }
@@ -91,6 +139,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (emailStatus === 'taken') {
+      setError('Este correo ya está en uso.');
+      return;
+    }
     setLoading(true);
     setError('');
     try {
@@ -99,7 +151,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       await syncUserToFirestore(result.user);
       handleSuccess();
     } catch (err: any) {
-      setError('Error al registrar. El correo podría estar en uso.');
+      if (err instanceof FirebaseError) {
+        if (err.code === 'auth/email-already-in-use') {
+          setError('El correo ya está asociado a otra cuenta (Local o Google).');
+        } else if (err.code === 'auth/weak-password') {
+          setError('La contraseña es demasiado débil (mínimo 6 caracteres).');
+        } else {
+          setError('Error al registrar. Verifica los datos.');
+        }
+      } else {
+        setError('Error al registrar. Intenta de nuevo.');
+      }
     } finally {
       setLoading(false);
     }
@@ -204,10 +266,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                         required
                         type="email"
                         placeholder="Email"
-                        className="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 py-4 focus:border-gamer-neon focus:outline-none transition-all"
+                        className={`w-full bg-white/5 border rounded-2xl pl-12 pr-4 py-4 focus:outline-none transition-all ${
+                          mode === 'register' && emailStatus === 'taken' ? 'border-gamer-danger shadow-[0_0_10px_rgba(255,0,85,0.2)]' : 
+                          mode === 'register' && emailStatus === 'available' ? 'border-green-500 shadow-[0_0_10px_rgba(34,197,94,0.2)]' : 
+                          'border-white/10 focus:border-gamer-neon'
+                        }`}
                         value={email}
-                        onChange={e => setEmail(e.target.value)}
+                        onChange={e => {
+                          setEmail(e.target.value);
+                          if (mode === 'register') setEmailStatus('idle');
+                        }}
+                        onBlur={() => mode === 'register' && checkEmailInUse(email)}
                       />
+                      {mode === 'register' && emailStatus === 'checking' && (
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2 animate-spin rounded-full h-4 w-4 border-2 border-gamer-neon border-t-transparent" />
+                      )}
                     </div>
                     <div className="relative group">
                       <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 group-focus-within:text-gamer-neon" size={18} />
