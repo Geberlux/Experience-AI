@@ -65,26 +65,37 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       const userRef = doc(db, 'personas', user.uid);
       const userDoc = await getDoc(userRef);
       
+      const isAdminEmail = user.email === 'curuzumartinez@gmail.com';
+      const targetRole = isAdminEmail ? 'admin' : 'client';
+
       if (!userDoc.exists()) {
         const userData = {
           uid: user.uid,
           email: user.email,
           displayName: user.displayName || displayName || 'Usuario Elite',
-          role: user.email === 'curuzumartinez@gmail.com' ? 'admin' : 'client',
+          role: targetRole,
           createdAt: new Date().toISOString()
         };
         
         console.log('Sincronizando nuevo usuario en Firestore:', userData);
         await setDoc(userRef, userData);
+      } else {
+        const currentData = userDoc.data();
+        // If it exists but role is wrong for the hardcoded admin, fix it
+        if (isAdminEmail && currentData?.role !== 'admin') {
+          console.log('Actualizando rol a Admin para cuenta protegida:', user.email);
+          await setDoc(userRef, { role: 'admin' }, { merge: true });
+        } else {
+          console.log('Usuario ya existe, saltando inserción (Upsert mode)');
+        }
       }
     } catch (err: any) {
       console.error('Error crítico al sincronizar con Firestore (Personas):', {
         code: err.code,
         message: err.message,
-        stack: err.stack,
+        path: `personas/${user.uid}`,
         userId: user.uid
       });
-      // We throw a more specific error to be caught by the handlers
       throw new Error(`fire_sync_failed: ${err.message}`);
     }
   };

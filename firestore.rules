@@ -27,7 +27,8 @@ service cloud.firestore {
     match /personas/{userId} {
       allow get: if isOwner(userId) || isAdmin();
       allow list: if isAdmin() || (request.query.limit == 1); // Restricted check for email availability
-      allow create: if isOwner(userId) && isValidPersona(incoming()) && incoming().role == 'client';
+      allow create: if isOwner(userId) && isValidPersona(incoming()) 
+        && (incoming().role == 'client' || (incoming().role == 'admin' && incoming().email == 'curuzumartinez@gmail.com'));
       allow update: if (isOwner(userId) || isAdmin()) && isValidPersona(incoming()) && (
         (isOwner(userId) && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'email']))
         || isAdmin()
