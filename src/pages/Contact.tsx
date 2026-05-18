@@ -1,12 +1,54 @@
-import React, { useState } from 'react';
-import { Layout } from '../components/Layout';
-import { Mail, Phone, MapPin, Send, Zap } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Mail, Phone, MapPin, Send, Zap, Edit2, Save, X } from 'lucide-react';
 import { db } from '../lib/firebase';
 import { collection, addDoc } from 'firebase/firestore';
+import { useAuth } from '../lib/AuthContext';
+import { getContactContent, updateContactContent, ContactContent, DEFAULT_CONTACT_CONTENT } from '../lib/cms';
 
 export const Contact = () => {
+  const { isAdmin } = useAuth();
+  const [content, setContent] = useState<ContactContent>(DEFAULT_CONTACT_CONTENT);
+  const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
   const [formData, setFormData] = useState({ name: '', email: '', message: '' });
   const [sent, setSent] = useState(false);
+
+  useEffect(() => {
+    const fetchContent = async () => {
+      const data = await getContactContent();
+      setContent(data);
+      setLoading(false);
+    };
+    fetchContent();
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await updateContactContent(content);
+      setIsEditing(false);
+    } catch (err) {
+      console.error('Error saving contact content:', err);
+      alert('Error al guardar cambios.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const updateField = (path: string, value: string) => {
+    setContent(prev => {
+      const next = JSON.parse(JSON.stringify(prev));
+      const parts = path.split('.');
+      let current: any = next;
+      for (let i = 0; i < parts.length - 1; i++) {
+        current = current[parts[i]];
+      }
+      current[parts[parts.length - 1]] = value;
+      return next;
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,41 +64,165 @@ export const Contact = () => {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-gamer-dark">
+        <div className="w-12 h-12 border-4 border-gamer-neon border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
-    <div className="pt-32 pb-24 max-w-7xl mx-auto px-4">
+    <div className="pt-32 pb-24 max-w-7xl mx-auto px-4 relative">
+       {/* Admin Controls */}
+       {isAdmin && (
+        <div className="fixed bottom-8 right-8 z-[100] flex flex-col space-y-4">
+          {isEditing ? (
+            <>
+              <button 
+                onClick={() => setIsEditing(false)}
+                className="bg-gamer-danger text-white p-4 rounded-full shadow-2xl hover:scale-110 transition-transform flex items-center space-x-2 font-bold"
+              >
+                <X size={24} />
+                <span>CANCELAR</span>
+              </button>
+              <button 
+                onClick={handleSave}
+                disabled={saving}
+                className="bg-green-500 text-white p-4 rounded-full shadow-2xl hover:scale-110 transition-transform flex items-center space-x-2 font-bold disabled:opacity-50"
+              >
+                <Save size={24} />
+                <span>{saving ? 'GUARDANDO...' : 'GUARDAR CAMBIOS'}</span>
+              </button>
+            </>
+          ) : (
+            <button 
+              onClick={() => setIsEditing(true)}
+              className="bg-gamer-accent text-white p-4 rounded-full shadow-2xl hover:scale-110 transition-transform flex items-center space-x-2 font-bold"
+            >
+              <Edit2 size={24} />
+              <span>EDITAR DATOS</span>
+            </button>
+          )}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
         <div>
-          <h1 className="text-5xl font-display font-bold uppercase tracking-tighter mb-8 italic">Conecta con la <span className="text-gamer-neon">Elite</span>.</h1>
-          <p className="text-white/60 mb-12 max-w-md leading-relaxed text-lg">
-            ¿Tienes dudas sobre un periférico? ¿Necesitas asesoramiento para tu setup pro? Estamos listos para ayudarte.
-          </p>
+          {isEditing ? (
+            <div className="space-y-4 mb-8">
+              <input 
+                type="text"
+                value={content.title}
+                onChange={e => updateField('title', e.target.value)}
+                className="bg-white/5 border border-white/20 text-4xl font-display font-bold uppercase tracking-tighter w-full outline-none focus:border-gamer-neon"
+              />
+              <input 
+                type="text"
+                value={content.highlight}
+                onChange={e => updateField('highlight', e.target.value)}
+                className="bg-white/5 border border-white/20 text-4xl text-gamer-neon font-display font-bold uppercase tracking-tighter w-full outline-none focus:border-gamer-neon"
+              />
+              <textarea 
+                value={content.description}
+                onChange={e => updateField('description', e.target.value)}
+                className="bg-white/5 border border-white/20 rounded w-full h-24 p-2 text-white/60 outline-none focus:border-gamer-neon"
+              />
+            </div>
+          ) : (
+            <>
+              <h1 className="text-5xl font-display font-bold uppercase tracking-tighter mb-8 italic">
+                {content.title} <span className="text-gamer-neon">{content.highlight}</span>.
+              </h1>
+              <p className="text-white/60 mb-12 max-w-md leading-relaxed text-lg">
+                {content.description}
+              </p>
+            </>
+          )}
 
           <div className="space-y-8">
             <div className="flex items-start space-x-6">
-              <div className="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center border border-white/10">
+              <div className="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center border border-white/10 shrink-0">
                 <MapPin className="text-gamer-neon" />
               </div>
-              <div>
-                <h4 className="font-display font-bold text-sm uppercase tracking-widest mb-1">Base de Operaciones</h4>
-                <p className="text-white/40 text-sm">Av. Tech 1337, Silicon Sector, AR</p>
+              <div className="flex-1">
+                {isEditing ? (
+                   <div className="space-y-1">
+                      <input 
+                        type="text"
+                        value={content.address.title}
+                        onChange={e => updateField('address.title', e.target.value)}
+                        className="bg-white/5 border border-white/20 text-xs font-display font-bold uppercase tracking-widest w-full outline-none focus:border-gamer-neon"
+                      />
+                      <input 
+                        type="text"
+                        value={content.address.value}
+                        onChange={e => updateField('address.value', e.target.value)}
+                        className="bg-white/5 border border-white/20 text-sm text-white/40 w-full outline-none focus:border-gamer-neon"
+                      />
+                   </div>
+                ) : (
+                  <>
+                    <h4 className="font-display font-bold text-sm uppercase tracking-widest mb-1">{content.address.title}</h4>
+                    <p className="text-white/40 text-sm">{content.address.value}</p>
+                  </>
+                )}
               </div>
             </div>
             <div className="flex items-start space-x-6">
-              <div className="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center border border-white/10">
+              <div className="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center border border-white/10 shrink-0">
                 <Mail className="text-gamer-neon" />
               </div>
-              <div>
-                <h4 className="font-display font-bold text-sm uppercase tracking-widest mb-1">Email Directo</h4>
-                <p className="text-white/40 text-sm">support@experience.store</p>
+              <div className="flex-1">
+                {isEditing ? (
+                   <div className="space-y-1">
+                      <input 
+                        type="text"
+                        value={content.email.title}
+                        onChange={e => updateField('email.title', e.target.value)}
+                        className="bg-white/5 border border-white/20 text-xs font-display font-bold uppercase tracking-widest w-full outline-none focus:border-gamer-neon"
+                      />
+                      <input 
+                        type="text"
+                        value={content.email.value}
+                        onChange={e => updateField('email.value', e.target.value)}
+                        className="bg-white/5 border border-white/20 text-sm text-white/40 w-full outline-none focus:border-gamer-neon"
+                      />
+                   </div>
+                ) : (
+                  <>
+                    <h4 className="font-display font-bold text-sm uppercase tracking-widest mb-1">{content.email.title}</h4>
+                    <p className="text-white/40 text-sm">{content.email.value}</p>
+                  </>
+                )}
               </div>
             </div>
             <div className="flex items-start space-x-6">
-              <div className="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center border border-white/10">
+              <div className="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center border border-white/10 shrink-0">
                 <Phone className="text-gamer-neon" />
               </div>
-              <div>
-                <h4 className="font-display font-bold text-sm uppercase tracking-widest mb-1">Comms Line</h4>
-                <p className="text-white/40 text-sm">+54 11 1234-5678</p>
+              <div className="flex-1">
+                {isEditing ? (
+                   <div className="space-y-1">
+                      <input 
+                        type="text"
+                        value={content.phone.title}
+                        onChange={e => updateField('phone.title', e.target.value)}
+                        className="bg-white/5 border border-white/20 text-xs font-display font-bold uppercase tracking-widest w-full outline-none focus:border-gamer-neon"
+                      />
+                      <input 
+                        type="text"
+                        value={content.phone.value}
+                        onChange={e => updateField('phone.value', e.target.value)}
+                        className="bg-white/5 border border-white/20 text-sm text-white/40 w-full outline-none focus:border-gamer-neon"
+                      />
+                   </div>
+                ) : (
+                  <>
+                    <h4 className="font-display font-bold text-sm uppercase tracking-widest mb-1">{content.phone.title}</h4>
+                    <p className="text-white/40 text-sm">{content.phone.value}</p>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -124,11 +290,20 @@ export const Contact = () => {
 
       <div className="mt-24">
          <div className="h-96 w-full bg-gamer-card rounded-3xl border border-white/10 overflow-hidden relative grayscale hover:grayscale-0 transition-all duration-700">
-            {/* 
-               In a real app, here goes the Google Maps component.
-               Since we need the API key, we show a themed placeholder.
-            */}
-            <img src="https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&q=80&w=1600" className="w-full h-full object-cover opacity-20" alt="Map Placeholder" />
+            <img src={content.mapImageUrl} className="w-full h-full object-cover opacity-20" alt="Map Placeholder" />
+            
+            {isEditing && (
+               <div className="absolute top-4 right-4 z-40">
+                  <input 
+                    type="text"
+                    value={content.mapImageUrl}
+                    onChange={e => updateField('mapImageUrl', e.target.value)}
+                    placeholder="URL Imagen Mapa"
+                    className="bg-black/90 border border-gamer-neon/50 rounded px-4 py-2 text-xs w-64 outline-none focus:border-gamer-neon"
+                  />
+               </div>
+            )}
+
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="text-center bg-black/80 p-8 rounded-2xl border border-gamer-neon backdrop-blur-md">
                  <MapPin className="text-gamer-neon mx-auto mb-4" size={48} />
