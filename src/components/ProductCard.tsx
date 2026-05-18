@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { ShoppingCart, Eye } from 'lucide-react';
 import { Product } from '../lib/products';
 import { useCartStore } from '../store/useCartStore';
+import { getDirectImageUrl } from '../lib/utils';
 
 interface ProductCardProps {
   product: Product;
@@ -50,7 +51,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, isAdmin, onEd
       )}
       <div className="relative aspect-square overflow-hidden bg-white/5">
         <img 
-          src={product.imageUrl} 
+          src={getDirectImageUrl(product.imageUrl)} 
           alt={product.name} 
           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
         />

@@ -152,13 +152,20 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                     <span className="text-2xl font-display font-bold text-gamer-neon">${cartTotal}</span>
                   </div>
                   <button 
-                    disabled={true} 
+                    onClick={() => {
+                      if (!user) {
+                        setIsAuthOpen(true);
+                      } else {
+                        setIsCartOpen(false);
+                        navigate('/checkout');
+                      }
+                    }}
                     className="w-full py-4 bg-gamer-accent rounded-xl font-bold flex items-center justify-center space-x-2 group hover:shadow-[0_0_20px_rgba(112,0,255,0.4)] transition-all"
                   >
-                    <span>Finalizar Compra (MP)</span>
+                    <span>Finalizar Compra</span>
                     <ChevronRight className="group-hover:translate-x-1 transition-transform" />
                   </button>
-                  <p className="text-center text-[10px] text-white/30 mt-4 uppercase tracking-tighter">Pagos seguros vía MercadoPago</p>
+                  <p className="text-center text-[10px] text-white/30 mt-4 uppercase tracking-tighter">Pasarela de pago Experience segura</p>
                 </div>
               )}
             </motion.div>

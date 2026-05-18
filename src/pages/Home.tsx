@@ -6,6 +6,7 @@ import { ProductCard } from '../components/ProductCard';
 import { Product } from '../lib/products';
 import { useAuth } from '../lib/AuthContext';
 import { getHomeContent, updateHomeContent, HomeContent, DEFAULT_HOME_CONTENT } from '../lib/cms';
+import { getDirectImageUrl } from '../lib/utils';
 
 const MOCK_FEATURED: Product[] = [
   {
@@ -134,7 +135,7 @@ export const Home = () => {
       <section className="relative h-[90vh] overflow-hidden flex items-center">
         <div className="absolute inset-0 z-0">
           <img 
-            src={content.hero.imageUrl} 
+            src={getDirectImageUrl(content.hero.imageUrl)} 
             className="w-full h-full object-cover opacity-30"
             alt="Gaming Hero"
           />

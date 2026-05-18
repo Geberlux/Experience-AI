@@ -21,6 +21,13 @@ interface Order {
   status: 'pending' | 'paid' | 'shipped' | 'cancelled';
   createdAt: string;
   mercadopagoId?: string;
+  shipping?: {
+    name: string;
+    address: string;
+    city: string;
+    zip: string;
+    phone: string;
+  };
 }
 
 const STATUS_CONFIG = {
@@ -221,6 +228,29 @@ export const AdminOrders = () => {
                   <div className="bg-red-500/10 border border-red-500/30 p-4 rounded-2xl flex items-center space-x-3">
                      <AlertTriangle className="text-red-500" />
                      <p className="text-sm font-bold text-red-500">ESTE PEDIDO FUE CANCELADO POR UN ADMINISTRADOR.</p>
+                  </div>
+                )}
+
+                {/* Shipping Info */}
+                {selectedOrder.shipping && (
+                  <div>
+                    <h4 className="text-xs font-bold uppercase tracking-widest text-white/30 mb-4 px-2">Datos de Entrega</h4>
+                    <div className="bg-white/5 rounded-2xl p-6 border border-white/5 space-y-4">
+                       <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-[10px] uppercase text-white/40 font-bold">Destinatario</p>
+                            <p className="text-sm font-bold">{selectedOrder.shipping.name}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] uppercase text-white/40 font-bold">Teléfono</p>
+                            <p className="text-sm font-bold">{selectedOrder.shipping.phone}</p>
+                          </div>
+                       </div>
+                       <div>
+                          <p className="text-[10px] uppercase text-white/40 font-bold">Dirección</p>
+                          <p className="text-sm font-bold">{selectedOrder.shipping.address}, {selectedOrder.shipping.city} ({selectedOrder.shipping.zip})</p>
+                       </div>
+                    </div>
                   </div>
                 )}
 

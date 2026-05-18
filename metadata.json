@@ -1,6 +1,6 @@
 {
   "name": "Experience Gamer Store",
-  "description": "Tienda premium de periféricos gamer con estética neón, carrito de compras, pagos con MercadoPago y panel de administración.",
-  "requestFramePermissions": ["geolocation"],
-  "majorCapabilities": []
+  "description": "Tienda premium de periféricos gamer con estética neón, sistema de gestión de contenido in-situ, catálogo dinámico y panel de administración avanzado.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

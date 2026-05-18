@@ -9,6 +9,7 @@ import { Home } from './pages/Home';
 import { Catalog } from './pages/Catalog';
 import { Contact } from './pages/Contact';
 import { About } from './pages/About';
+import { Checkout } from './pages/Checkout';
 import { AdminOrders } from './pages/AdminOrders';
 import { AdminUsers } from './pages/AdminUsers';
 import { AuthProvider } from './lib/AuthContext';
@@ -23,6 +24,7 @@ export default function App() {
             <Route path="/catalog" element={<Catalog />} />
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
+            <Route path="/checkout" element={<Checkout />} />
             <Route path="/admin/orders" element={<AdminOrders />} />
             <Route path="/admin/users" element={<AdminUsers />} />
             {/* Fallback */}

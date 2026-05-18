@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ProductCard } from '../components/ProductCard';
 import { Product, subscribeToProducts } from '../lib/products';
-import { SlidersHorizontal, Search, Plus, X, Save } from 'lucide-react';
+import { SlidersHorizontal, Search, Plus, X, Save, Image as ImageIcon } from 'lucide-react';
 import { useAuth } from '../lib/AuthContext';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { collection, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
+import { getDirectImageUrl } from '../lib/utils';
 
 export const Catalog = () => {
   const { isAdmin } = useAuth();
@@ -151,12 +152,21 @@ export const Catalog = () => {
                 </div>
                 <div className="space-y-1 md:col-span-2">
                   <label className="text-[10px] uppercase tracking-widest text-white/40 font-bold ml-2">URL Imagen</label>
-                  <input 
-                    placeholder="https://images.unsplash.com/..." 
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-4 focus:border-gamer-neon outline-none transition-all"
-                    value={formData.imageUrl}
-                    onChange={e => setFormData({...formData, imageUrl: e.target.value})}
-                  />
+                  <div className="flex space-x-4 items-center">
+                    <input 
+                      placeholder="https://drive.google.com/... o https://images.unsplash.com/..." 
+                      className="flex-1 bg-white/5 border border-white/10 rounded-2xl px-4 py-4 focus:border-gamer-neon outline-none transition-all"
+                      value={formData.imageUrl}
+                      onChange={e => setFormData({...formData, imageUrl: e.target.value})}
+                    />
+                    <div className="w-16 h-16 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden shrink-0">
+                       {formData.imageUrl ? (
+                          <img src={getDirectImageUrl(formData.imageUrl)} className="w-full h-full object-cover" alt="Preview" />
+                       ) : (
+                          <ImageIcon className="text-white/20" size={20} />
+                       )}
+                    </div>
+                  </div>
                 </div>
                 <div className="space-y-1 md:col-span-2">
                   <label className="text-[10px] uppercase tracking-widest text-white/40 font-bold ml-2">Descripción</label>

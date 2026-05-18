@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Target, Users, Zap, Shield, Trophy, Edit2, Save, X } from 'lucide-react';
 import { useAuth } from '../lib/AuthContext';
 import { getAboutContent, updateAboutContent, AboutContent, DEFAULT_ABOUT_CONTENT } from '../lib/cms';
+import { getDirectImageUrl } from '../lib/utils';
 
 export const About = () => {
   const { isAdmin } = useAuth();
@@ -137,7 +138,7 @@ export const About = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-24 items-center mb-32">
            <div className="relative group">
               <div className="absolute -inset-4 bg-gamer-neon/20 blur-3xl opacity-0 group-hover:opacity-100 transition-opacity" />
-              <img src={content.hero.imageUrl} className="rounded-3xl border border-white/10 relative z-10 w-full" alt="Gamer Setup" />
+              <img src={getDirectImageUrl(content.hero.imageUrl)} className="rounded-3xl border border-white/10 relative z-10 w-full" alt="Gamer Setup" />
               {isEditing && (
                 <div className="mt-4">
                   <input 
