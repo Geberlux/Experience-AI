@@ -35,6 +35,11 @@ service cloud.firestore {
       );
     }
 
+    match /site_content/{document} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     // --- Products ---
     function isValidProduct(data) {
       return data.name is string && data.name.size() <= 200

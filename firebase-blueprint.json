@@ -60,6 +60,10 @@
       "schema": "Persona",
       "description": "Perfiles de usuario individuales"
     },
+    "/site_content/{contentId}": {
+      "schema": "object",
+      "description": "Dynamic content for the website"
+    },
     "/products/{productId}": {
       "schema": "Product",
       "description": "Products catalog"

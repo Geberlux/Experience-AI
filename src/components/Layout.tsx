@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ShoppingCart, User, Menu, X, LogOut, ChevronRight, Zap } from 'lucide-react';
+import { signOut } from 'firebase/auth';
 import { auth } from '../lib/firebase';
-import { signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { useCartStore } from '../store/useCartStore';
 import { motion, AnimatePresence } from 'motion/react';
 import { AuthModal } from './AuthModal';
+import { useAuth } from '../lib/AuthContext';
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<FirebaseUser | null>(null);
+  const { user, isAdmin } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
@@ -17,10 +18,6 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const removeItem = useCartStore((state) => state.removeItem);
   const updateQuantity = useCartStore((state) => state.updateQuantity);
   const navigate = useNavigate();
-
-  useEffect(() => {
-    return onAuthStateChanged(auth, (u) => setUser(u));
-  }, []);
 
   const logout = () => signOut(auth);
 
@@ -44,7 +41,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               <Link to="/catalog" className="text-white/70 hover:text-gamer-neon transition-colors">Catálogo</Link>
               <Link to="/about" className="text-white/70 hover:text-gamer-neon transition-colors">Quiénes Somos</Link>
               <Link to="/contact" className="text-white/70 hover:text-gamer-neon transition-colors">Contacto</Link>
-              {user?.email === 'curuzumartinez@gmail.com' && (
+              {isAdmin && (
                  <Link to="/admin" className="text-gamer-accent hover:text-white transition-colors">Admin Panel</Link>
               )}
             </div>
