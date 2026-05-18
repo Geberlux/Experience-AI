@@ -18,10 +18,10 @@ service cloud.firestore {
 
     // --- Personas ---
     function isValidPersona(data) {
-      return data.uid == request.auth.uid 
-        && data.email is string && data.email.size() <= 150
+      return data.email is string && data.email.size() <= 150
         && data.role in ['admin', 'client']
-        && (data.get('displayName', '') is string);
+        && (data.get('displayName', '') is string)
+        && (data.get('status', 'active') in ['active', 'suspended']);
     }
     
     match /personas/{userId} {
@@ -33,6 +33,7 @@ service cloud.firestore {
         (isOwner(userId) && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'email']))
         || isAdmin()
       );
+      allow delete: if isAdmin();
     }
 
     match /site_content/{document} {

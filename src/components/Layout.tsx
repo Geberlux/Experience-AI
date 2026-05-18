@@ -41,6 +41,12 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               <Link to="/catalog" className="text-white/70 hover:text-gamer-neon transition-colors">Catálogo</Link>
               <Link to="/about" className="text-white/70 hover:text-gamer-neon transition-colors">Quiénes Somos</Link>
               <Link to="/contact" className="text-white/70 hover:text-gamer-neon transition-colors">Contacto</Link>
+              {isAdmin && (
+                <>
+                  <Link to="/admin/orders" className="text-gamer-accent hover:text-white transition-colors">Pedidos</Link>
+                  <Link to="/admin/users" className="text-gamer-accent hover:text-white transition-colors">Usuarios</Link>
+                </>
+              )}
             </div>
 
             <div className="flex items-center space-x-4">
