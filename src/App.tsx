@@ -9,7 +9,6 @@ import { Home } from './pages/Home';
 import { Catalog } from './pages/Catalog';
 import { Contact } from './pages/Contact';
 import { About } from './pages/About';
-import { AdminDashboard } from './pages/AdminDashboard';
 import { AuthProvider } from './lib/AuthContext';
 
 export default function App() {
@@ -22,7 +21,6 @@ export default function App() {
             <Route path="/catalog" element={<Catalog />} />
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
-            <Route path="/admin" element={<AdminDashboard />} />
             {/* Fallback */}
             <Route path="*" element={<Home />} />
           </Routes>

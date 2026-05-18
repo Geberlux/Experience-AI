@@ -42,7 +42,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               <Link to="/about" className="text-white/70 hover:text-gamer-neon transition-colors">Quiénes Somos</Link>
               <Link to="/contact" className="text-white/70 hover:text-gamer-neon transition-colors">Contacto</Link>
               {isAdmin && (
-                 <Link to="/admin" className="text-gamer-accent hover:text-white transition-colors">Admin Panel</Link>
+                 <Link to="/catalog" className="text-gamer-accent hover:text-white transition-colors">Gestión Stock</Link>
               )}
             </div>
 

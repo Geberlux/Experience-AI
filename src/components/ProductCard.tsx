@@ -6,9 +6,12 @@ import { useCartStore } from '../store/useCartStore';
 
 interface ProductCardProps {
   product: Product;
+  isAdmin?: boolean;
+  onEdit?: (p: Product) => void;
+  onDelete?: (id: string) => void;
 }
 
-export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
+export const ProductCard: React.FC<ProductCardProps> = ({ product, isAdmin, onEdit, onDelete }) => {
   const addItem = useCartStore((state) => state.addItem);
 
   const handleAddToCart = (e: React.MouseEvent) => {
@@ -26,8 +29,25 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   return (
     <motion.div 
       whileHover={{ y: -5 }}
-      className="bg-gamer-card border border-white/10 rounded-2xl overflow-hidden group hover:border-gamer-neon transition-colors"
+      className="bg-gamer-card border border-white/10 rounded-2xl overflow-hidden group hover:border-gamer-neon transition-colors relative"
     >
+      {isAdmin && (
+        <div className="absolute top-4 right-4 z-20 flex space-x-2">
+          <button 
+            onClick={(e) => { e.preventDefault(); onEdit?.(product); }}
+            className="p-2 bg-white/10 backdrop-blur-md rounded-lg text-white hover:bg-gamer-accent transition-colors"
+          >
+            <Eye size={16} className="hidden" /> {/* Placeholder icon */}
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-edit-3"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          </button>
+          <button 
+            onClick={(e) => { e.preventDefault(); onDelete?.(product.id); }}
+            className="p-2 bg-white/10 backdrop-blur-md rounded-lg text-white hover:bg-gamer-danger transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-trash-2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+          </button>
+        </div>
+      )}
       <div className="relative aspect-square overflow-hidden bg-white/5">
         <img 
           src={product.imageUrl} 

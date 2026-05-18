@@ -2,15 +2,32 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ProductCard } from '../components/ProductCard';
 import { Product, subscribeToProducts } from '../lib/products';
-import { SlidersHorizontal, Search } from 'lucide-react';
+import { SlidersHorizontal, Search, Plus, X, Save } from 'lucide-react';
+import { useAuth } from '../lib/AuthContext';
+import { db, handleFirestoreError, OperationType } from '../lib/firebase';
+import { collection, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 
 export const Catalog = () => {
+  const { isAdmin } = useAuth();
   const [searchParams] = useSearchParams();
   const catParam = searchParams.get('cat');
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeCategory, setActiveCategory] = useState(catParam || 'all');
+
+  const [isAdding, setIsAdding] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [formData, setFormData] = useState<Partial<Product>>({
+    name: '',
+    description: '',
+    price: 0,
+    stock: 0,
+    category: 'keyboards',
+    imageUrl: '',
+    active: true,
+    featured: false
+  });
 
   useEffect(() => {
     const unsub = subscribeToProducts((data) => {
@@ -19,6 +36,30 @@ export const Catalog = () => {
     });
     return () => unsub();
   }, []);
+
+  const handleSave = async () => {
+    try {
+      if (editingId) {
+        await updateDoc(doc(db, 'products', editingId), formData);
+      } else {
+        await addDoc(collection(db, 'products'), formData);
+      }
+      setIsAdding(false);
+      setEditingId(null);
+      setFormData({ name: '', description: '', price: 0, stock: 0, category: 'keyboards', imageUrl: '', active: true, featured: false });
+    } catch (err) {
+      handleFirestoreError(err, editingId ? OperationType.UPDATE : OperationType.CREATE, 'products');
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('¿Eliminar este producto?')) return;
+    try {
+      await deleteDoc(doc(db, 'products', id));
+    } catch (err) {
+      handleFirestoreError(err, OperationType.DELETE, 'products');
+    }
+  };
 
   const filteredProducts = products.filter((p) => {
     const matchesCat = activeCategory === 'all' || p.category === activeCategory;
@@ -33,8 +74,17 @@ export const Catalog = () => {
            <h1 className="text-4xl font-display font-bold uppercase tracking-tighter">Arma tu Setup</h1>
            <p className="text-white/40 text-sm mt-2">Explora la selección premium de periféricos.</p>
         </div>
-        <div className="flex space-x-4">
-          <div className="relative group">
+        <div className="flex flex-wrap items-center gap-4">
+          {isAdmin && (
+            <button 
+              onClick={() => setIsAdding(true)}
+              className="bg-gamer-accent text-white px-6 py-3 rounded-full font-bold flex items-center space-x-2 hover:shadow-[0_0_15px_rgba(112,0,255,0.4)] transition-all order-last md:order-first w-full md:w-auto justify-center"
+            >
+              <Plus size={20} />
+              <span>AÑADIR PRODUCTO</span>
+            </button>
+          )}
+          <div className="relative group flex-1 md:flex-none">
              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 group-focus-within:text-gamer-neon transition-colors" size={20} />
              <input 
                type="text" 
@@ -49,6 +99,87 @@ export const Catalog = () => {
           </button>
         </div>
       </div>
+
+      {(isAdding || editingId) && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="bg-gamer-card border border-gamer-accent rounded-3xl p-8 w-full max-w-2xl shadow-2xl animate-in zoom-in duration-300">
+             <div className="flex justify-between items-center mb-8">
+                <h3 className="text-2xl font-display font-bold uppercase tracking-tighter">{editingId ? 'Editar Producto' : 'Nuevo Periférico'}</h3>
+                <button onClick={() => { setIsAdding(false); setEditingId(null); }} className="p-2 text-white/40 hover:text-gamer-danger transition-colors"><X /></button>
+             </div>
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase tracking-widest text-white/40 font-bold ml-2">Nombre</label>
+                  <input 
+                    placeholder="Ej: Apex Pro TKL" 
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-4 focus:border-gamer-neon outline-none transition-all"
+                    value={formData.name}
+                    onChange={e => setFormData({...formData, name: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase tracking-widest text-white/40 font-bold ml-2">Categoría</label>
+                  <select 
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-4 focus:border-gamer-neon outline-none appearance-none"
+                    value={formData.category || 'keyboards'}
+                    onChange={e => setFormData({...formData, category: e.target.value as any})}
+                  >
+                    <option value="keyboards">Teclado</option>
+                    <option value="mice">Mouse</option>
+                    <option value="controllers">Control</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase tracking-widest text-white/40 font-bold ml-2">Precio ($)</label>
+                  <input 
+                    type="number" 
+                    placeholder="0.00" 
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-4 focus:border-gamer-neon outline-none transition-all"
+                    value={formData.price}
+                    onChange={e => setFormData({...formData, price: parseFloat(e.target.value)})}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase tracking-widest text-white/40 font-bold ml-2">Stock Disponible</label>
+                  <input 
+                    type="number" 
+                    placeholder="0" 
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-4 focus:border-gamer-neon outline-none transition-all"
+                    value={formData.stock}
+                    onChange={e => setFormData({...formData, stock: parseInt(e.target.value)})}
+                  />
+                </div>
+                <div className="space-y-1 md:col-span-2">
+                  <label className="text-[10px] uppercase tracking-widest text-white/40 font-bold ml-2">URL Imagen</label>
+                  <input 
+                    placeholder="https://images.unsplash.com/..." 
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-4 focus:border-gamer-neon outline-none transition-all"
+                    value={formData.imageUrl}
+                    onChange={e => setFormData({...formData, imageUrl: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-1 md:col-span-2">
+                  <label className="text-[10px] uppercase tracking-widest text-white/40 font-bold ml-2">Descripción</label>
+                  <textarea 
+                    placeholder="Detalles sobre switches, sensores, etc..." 
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-4 focus:border-gamer-neon outline-none h-24 resize-none transition-all"
+                    value={formData.description}
+                    onChange={e => setFormData({...formData, description: e.target.value})}
+                  />
+                </div>
+             </div>
+             <div className="mt-10 flex justify-end">
+                <button 
+                  onClick={handleSave}
+                  className="bg-gamer-neon text-black font-bold px-12 py-4 rounded-full flex items-center justify-center space-x-3 hover:bg-white hover:scale-105 transition-all shadow-[0_0_20px_rgba(0,242,255,0.3)]"
+                >
+                  <Save size={20} />
+                  <span>GUARDAR CAMBIOS</span>
+                </button>
+             </div>
+          </div>
+        </div>
+      )}
 
       <div className="flex overflow-x-auto space-x-4 pb-8 no-scrollbar scroll-smooth">
         {['all', 'keyboards', 'mice', 'controllers'].map((cat) => (
@@ -75,7 +206,13 @@ export const Catalog = () => {
       ) : filteredProducts.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
           {filteredProducts.map((product) => (
-            <ProductCard key={product.id} product={product} />
+            <ProductCard 
+              key={product.id} 
+              product={product} 
+              isAdmin={isAdmin}
+              onEdit={(p) => { setEditingId(p.id); setFormData(p); }}
+              onDelete={handleDelete}
+            />
           ))}
         </div>
       ) : (
