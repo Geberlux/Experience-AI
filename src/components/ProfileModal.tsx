@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, User, Mail, ClipboardList, Trash2, Calendar, ShieldAlert, Loader2, CheckCircle2, Truck, Clock, XCircle } from 'lucide-react';
+import { X, User, Mail, ClipboardList, Trash2, Calendar, ShieldAlert, Loader2, CheckCircle2, Truck, Clock, XCircle, ChevronRight, ChevronLeft } from 'lucide-react';
 import { auth, db } from '../lib/firebase';
 import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 import { useAuth } from '../lib/AuthContext';
@@ -23,6 +23,15 @@ interface ClientOrder {
   total: number;
   status: 'pending' | 'paid' | 'shipped' | 'completed' | 'cancelled';
   createdAt: string;
+  shipping?: {
+    name: string;
+    address: string;
+    city: string;
+    zip: string;
+    phone: string;
+  };
+  paymentMethod?: string;
+  paymentLast4?: string;
 }
 
 const STATUS_CONFIG = {
@@ -37,6 +46,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) =
   const { user } = useAuth();
   const [orders, setOrders] = useState<ClientOrder[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
+  const [selectedOrder, setSelectedOrder] = useState<ClientOrder | null>(null);
   const [activeTab, setActiveTab] = useState<'profile' | 'orders'>('profile');
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -45,6 +55,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) =
   useEffect(() => {
     if (!isOpen || !user) return;
 
+    setSelectedOrder(null);
     setLoadingOrders(true);
     // Subscribing to user's orders list
     const q = query(
@@ -107,7 +118,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) =
           {/* Sidebar Tabs */}
           <div className="w-full md:w-56 bg-black/30 border-b md:border-b-0 md:border-r border-white/5 p-6 flex flex-row md:flex-col justify-start md:space-y-2 shrink-0 gap-2 overflow-x-auto">
             <button
-              onClick={() => { setActiveTab('profile'); setDeleteConfirm(false); setErrorMsg(''); }}
+              onClick={() => { setActiveTab('profile'); setSelectedOrder(null); setDeleteConfirm(false); setErrorMsg(''); }}
               className={`flex-1 md:flex-initial flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${
                 activeTab === 'profile'
                   ? 'bg-gamer-accent text-white shadow-[0_0_15px_rgba(112,0,255,0.3)]'
@@ -118,7 +129,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) =
               <span>Mi Perfil</span>
             </button>
             <button
-              onClick={() => { setActiveTab('orders'); setDeleteConfirm(false); setErrorMsg(''); }}
+              onClick={() => { setActiveTab('orders'); setSelectedOrder(null); setDeleteConfirm(false); setErrorMsg(''); }}
               className={`flex-1 md:flex-initial flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${
                 activeTab === 'orders'
                   ? 'bg-gamer-accent text-white shadow-[0_0_15px_rgba(112,0,255,0.3)]'
@@ -236,55 +247,150 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) =
               </div>
             ) : (
               <div className="flex-1 flex flex-col min-h-0">
-                <h3 className="text-2xl font-display font-bold uppercase tracking-tighter mb-6">
-                  Historial de Pedidos
-                </h3>
+                {selectedOrder ? (
+                  <div className="flex-1 flex flex-col min-h-0">
+                    <div className="flex items-center space-x-2 mb-4">
+                      <button
+                        onClick={() => setSelectedOrder(null)}
+                        className="flex items-center space-x-1 text-xs text-gamer-neon hover:underline font-bold uppercase tracking-wider"
+                      >
+                        <ChevronLeft size={16} />
+                        <span>Volver al listado</span>
+                      </button>
+                    </div>
 
-                {loadingOrders ? (
-                  <div className="flex-1 flex flex-col items-center justify-center space-y-3">
-                    <Loader2 className="animate-spin text-gamer-neon" size={32} />
-                    <p className="text-xs text-white/40 uppercase tracking-widest">Cargando pedidos...</p>
-                  </div>
-                ) : orders.length > 0 ? (
-                  <div className="flex-1 overflow-y-auto space-y-4 pr-1">
-                    {orders.map((order) => {
-                      const config = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending;
-                      const Icon = config.icon;
-                      return (
-                        <div key={order.id} className="bg-white/5 border border-white/5 rounded-2xl p-5 space-y-4">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-2">
-                              <span className="text-xs font-mono font-bold text-white/60">#{order.id.slice(0, 8).toUpperCase()}</span>
-                              <span className={`text-[9px] uppercase font-bold py-0.5 px-2 rounded ${config.bg} ${config.color}`}>
-                                {config.label}
-                              </span>
-                            </div>
-                            <div className="flex items-center space-x-1 text-white/40 text-xs">
-                              <Calendar size={12} />
-                              <span>{new Date(order.createdAt).toLocaleDateString()}</span>
-                            </div>
-                          </div>
+                    <div className="flex-1 overflow-y-auto space-y-4 pr-1 text-sm">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-[10px] uppercase font-bold text-white/30 tracking-widest">Pedido</p>
+                          <h4 className="font-mono font-bold text-sm text-white/90">#{selectedOrder.id.toUpperCase()}</h4>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[10px] uppercase font-bold text-white/30 tracking-widest">Fecha</p>
+                          <p className="text-xs text-white/80">{new Date(selectedOrder.createdAt).toLocaleDateString()}</p>
+                        </div>
+                      </div>
 
-                          <div className="border-t border-b border-white/5 py-3 space-y-2">
-                            {order.items?.map((item, idx) => (
-                              <div key={idx} className="flex justify-between items-center text-xs">
-                                <span className="text-white/70">{item.name} <span className="text-white/30">x{item.quantity}</span></span>
-                                <span className="font-bold text-white/90">${item.price * item.quantity}</span>
+                      <div className="flex items-center justify-between bg-white/5 border border-white/5 rounded-2xl p-4">
+                        <span className="text-xs font-bold text-white/50">Estado del Pedido:</span>
+                        {(() => {
+                          const config = STATUS_CONFIG[selectedOrder.status] || STATUS_CONFIG.pending;
+                          return (
+                            <span className={`text-[10px] uppercase font-bold py-1 px-3 rounded ${config.bg} ${config.color}`}>
+                              {config.label}
+                            </span>
+                          );
+                        })()}
+                      </div>
+
+                      {selectedOrder.shipping && (
+                        <div className="bg-white/5 border border-white/5 rounded-2xl p-4 space-y-3">
+                          <h4 className="text-[10px] uppercase font-bold text-white/40 tracking-widest leading-none">Detalles de Envío</h4>
+                          <div className="border-t border-white/5 pt-3 space-y-2 text-xs">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <p className="text-[10px] uppercase text-white/30 font-bold">Destinatario</p>
+                                <p className="text-white/80 font-bold">{selectedOrder.shipping.name}</p>
                               </div>
-                            ))}
-                          </div>
-
-                          <div className="flex justify-between items-center text-sm">
-                            <span className="text-xs text-white/40">Monto Final</span>
-                            <span className="font-display font-bold text-gamer-neon text-base">${order.total}</span>
+                              <div>
+                                <p className="text-[10px] uppercase text-white/30 font-bold">Teléfono</p>
+                                <p className="text-white/80 font-bold">{selectedOrder.shipping.phone}</p>
+                              </div>
+                            </div>
+                            <div>
+                              <p className="text-[10px] uppercase text-white/30 font-bold">Dirección de Entrega</p>
+                              <p className="text-white/80 font-bold">{selectedOrder.shipping.address}, {selectedOrder.shipping.city} ({selectedOrder.shipping.zip})</p>
+                            </div>
                           </div>
                         </div>
-                      );
-                    })}
+                      )}
+
+                      <div className="bg-white/5 border border-white/5 rounded-2xl p-4 space-y-3">
+                        <h4 className="text-[10px] uppercase font-bold text-white/40 tracking-widest leading-none">Productos Comprados</h4>
+                        <div className="border-t border-white/5 pt-3 divide-y divide-white/5">
+                          {selectedOrder.items?.map((item, idx) => (
+                            <div key={idx} className="flex justify-between items-center py-2 text-xs">
+                              <div>
+                                <p className="text-white/80 font-medium">{item.name}</p>
+                                <p className="text-white/40 text-[10px]">Cantidad: {item.quantity} • Precio unitario: ${item.price}</p>
+                              </div>
+                              <span className="font-bold text-white/95 font-mono">${item.price * item.quantity}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="bg-white/5 border border-white/5 rounded-2xl p-4 flex justify-between items-center">
+                        <div>
+                          <p className="text-[10px] uppercase text-white/40 font-bold">Método de Pago</p>
+                          <p className="text-xs text-white/80 mt-0.5">{selectedOrder.paymentMethod || 'Mock Credit Card'} (**** {selectedOrder.paymentLast4 || '1234'})</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[10px] uppercase text-white/40 font-bold">Total Pagado</p>
+                          <span className="font-display font-bold text-gamer-neon text-lg">${selectedOrder.total}</span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 ) : (
-                  <div className="flex-1 flex flex-col items-center justify-center text-center p-8 border border-dashed border-white/10 rounded-2xl">
-                    <p className="text-white/40 italic text-sm">Aún no has realizado ninguna compra.</p>
+                  <div className="flex-1 flex flex-col min-h-0">
+                    <h3 className="text-2xl font-display font-bold uppercase tracking-tighter mb-6">
+                      Historial de Pedidos
+                    </h3>
+
+                    {loadingOrders ? (
+                      <div className="flex-1 flex flex-col items-center justify-center space-y-3">
+                        <Loader2 className="animate-spin text-gamer-neon" size={32} />
+                        <p className="text-xs text-white/40 uppercase tracking-widest">Cargando pedidos...</p>
+                      </div>
+                    ) : orders.length > 0 ? (
+                      <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+                        {orders.map((order) => {
+                          const config = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending;
+                          return (
+                            <div 
+                              key={order.id} 
+                              onClick={() => setSelectedOrder(order)}
+                              className="bg-white/5 border border-white/5 rounded-2xl p-5 space-y-4 cursor-pointer hover:border-gamer-neon/30 hover:bg-white/10 active:scale-[0.99] transition-all group"
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-2">
+                                  <span className="text-xs font-mono font-bold text-white/60 group-hover:text-gamer-neon transition-colors">#{order.id.slice(0, 8).toUpperCase()}</span>
+                                  <span className={`text-[9px] uppercase font-bold py-0.5 px-2 rounded ${config.bg} ${config.color}`}>
+                                    {config.label}
+                                  </span>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <div className="flex items-center space-x-1 text-white/40 text-xs text-right">
+                                    <Calendar size={12} />
+                                    <span>{new Date(order.createdAt).toLocaleDateString()}</span>
+                                  </div>
+                                  <ChevronRight size={14} className="text-white/20 group-hover:text-gamer-neon group-hover:translate-x-0.5 transition-all" />
+                                </div>
+                              </div>
+
+                              <div className="border-t border-b border-white/5 py-3 space-y-2">
+                                {order.items?.map((item, idx) => (
+                                  <div key={idx} className="flex justify-between items-center text-xs">
+                                    <span className="text-white/70">{item.name} <span className="text-white/30">x{item.quantity}</span></span>
+                                    <span className="font-bold text-white/90">${item.price * item.quantity}</span>
+                                  </div>
+                                ))}
+                              </div>
+
+                              <div className="flex justify-between items-center text-sm">
+                                <span className="text-xs text-white/40">Monto Final</span>
+                                <span className="font-display font-bold text-gamer-neon text-base">${order.total}</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="flex-1 flex flex-col items-center justify-center text-center p-8 border border-dashed border-white/10 rounded-2xl">
+                        <p className="text-white/40 italic text-sm">Aún no has realizado ninguna compra.</p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

@@ -130,7 +130,8 @@ export const AdminOrders = () => {
               return (
                 <div 
                   key={order.id} 
-                  className={`bg-gamer-card border ${isCancelled ? 'border-red-500/30' : 'border-white/5'} rounded-2xl p-6 hover:border-gamer-neon/30 transition-all group`}
+                  onClick={() => setSelectedOrder(order)}
+                  className={`bg-gamer-card border ${isCancelled ? 'border-red-500/30' : 'border-white/5'} rounded-2xl p-6 hover:border-gamer-neon/30 hover:bg-white/5 cursor-pointer transition-all active:scale-[0.995] group`}
                 >
                   <div className="flex flex-wrap items-center justify-between gap-6">
                     <div className="flex items-center space-x-6">
@@ -139,7 +140,7 @@ export const AdminOrders = () => {
                       </div>
                       <div>
                         <div className="flex items-center space-x-2">
-                           <h4 className="font-bold text-sm uppercase tracking-tight">#{order.id.slice(0, 8)}</h4>
+                           <h4 className="font-bold text-sm uppercase tracking-tight group-hover:text-gamer-neon transition-colors">#{order.id.slice(0, 8)}</h4>
                            <span className={`text-[10px] uppercase font-bold py-1 px-2 rounded ${config.bg} ${config.color}`}>
                              {config.label}
                            </span>
@@ -150,7 +151,7 @@ export const AdminOrders = () => {
                       </div>
                     </div>
 
-                    <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-4" onClick={(e) => e.stopPropagation()}>
                        <select 
                          className="bg-[#121118] text-white border border-white/10 rounded-lg px-4 py-2 text-xs focus:border-gamer-neon outline-none"
                          value={order.status}
