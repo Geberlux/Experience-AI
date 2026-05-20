@@ -214,7 +214,7 @@ export const Catalog = () => {
                     />
                     <div className="w-16 h-16 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden shrink-0">
                        {formData.imageUrl ? (
-                          <img src={getDirectImageUrl(formData.imageUrl)} className="w-full h-full object-cover" alt="Preview" />
+                          <img referrerPolicy="no-referrer" src={getDirectImageUrl(formData.imageUrl)} className="w-full h-full object-cover" alt="Preview" />
                        ) : (
                           <ImageIcon className="text-white/20" size={20} />
                        )}

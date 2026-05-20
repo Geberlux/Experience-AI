@@ -18,11 +18,12 @@ export function getDirectImageUrl(url: string | undefined): string {
   if (!url) return '';
   
   // If it's already a direct link or not from google drive, return as is
-  if (!url.includes('drive.google.com')) return url;
+  if (!url.includes('drive.google.com') && !url.includes('googleusercontent.com')) return url;
 
-  const fileIdMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
+  // Extract file ID from various formats
+  const fileIdMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/) || url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
   if (fileIdMatch && fileIdMatch[1]) {
-    return `https://drive.google.com/uc?export=view&id=${fileIdMatch[1]}`;
+    return `https://lh3.googleusercontent.com/d/${fileIdMatch[1]}`;
   }
 
   return url;

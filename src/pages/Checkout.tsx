@@ -6,6 +6,7 @@ import { useCartStore } from '../store/useCartStore';
 import { useAuth } from '../lib/AuthContext';
 import { db } from '../lib/firebase';
 import { collection, addDoc } from 'firebase/firestore';
+import { getDirectImageUrl } from '../lib/utils';
 
 export const Checkout = () => {
   const navigate = useNavigate();
@@ -329,7 +330,12 @@ export const Checkout = () => {
               <div className="space-y-6 mb-8 max-h-[40vh] overflow-y-auto pr-2">
                 {items.map((item) => (
                   <div key={item.id} className="flex space-x-4 items-center">
-                    <img src={item.imageUrl} className="w-16 h-16 rounded-xl object-cover bg-white/5" alt={item.name} />
+                    <img 
+                      referrerPolicy="no-referrer"
+                      src={getDirectImageUrl(item.imageUrl)} 
+                      className="w-16 h-16 rounded-xl object-cover bg-white/5" 
+                      alt={item.name} 
+                    />
                     <div className="flex-1">
                       <p className="font-bold text-sm leading-tight">{item.name}</p>
                       <p className="text-xs text-white/40 mt-1">Cantidad: {item.quantity}</p>

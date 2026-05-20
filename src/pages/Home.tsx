@@ -135,6 +135,7 @@ export const Home = () => {
       <section className="relative h-[90vh] overflow-hidden flex items-center">
         <div className="absolute inset-0 z-0">
           <img 
+            referrerPolicy="no-referrer"
             src={getDirectImageUrl(content.hero.imageUrl)} 
             className="w-full h-full object-cover opacity-30"
             alt="Gaming Hero"

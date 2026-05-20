@@ -10,6 +10,7 @@ import { Catalog } from './pages/Catalog';
 import { Contact } from './pages/Contact';
 import { About } from './pages/About';
 import { Checkout } from './pages/Checkout';
+import { ProductDetail } from './pages/ProductDetail';
 import { AdminOrders } from './pages/AdminOrders';
 import { AdminUsers } from './pages/AdminUsers';
 import { AuthProvider } from './lib/AuthContext';
@@ -25,6 +26,7 @@ export default function App() {
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/checkout" element={<Checkout />} />
+            <Route path="/product/:id" element={<ProductDetail />} />
             <Route path="/admin/orders" element={<AdminOrders />} />
             <Route path="/admin/users" element={<AdminUsers />} />
             {/* Fallback */}

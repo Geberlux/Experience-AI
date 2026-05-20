@@ -291,7 +291,7 @@ export const Contact = () => {
 
       <div className="mt-24">
          <div className="h-96 w-full bg-gamer-card rounded-3xl border border-white/10 overflow-hidden relative grayscale hover:grayscale-0 transition-all duration-700">
-            <img src={getDirectImageUrl(content.mapImageUrl)} className="w-full h-full object-cover opacity-20" alt="Map Placeholder" />
+            <img referrerPolicy="no-referrer" src={getDirectImageUrl(content.mapImageUrl)} className="w-full h-full object-cover opacity-20" alt="Map Placeholder" />
             
             {isEditing && (
                <div className="absolute top-4 right-4 z-40">

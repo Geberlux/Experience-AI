@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { AuthModal } from './AuthModal';
 import { ProfileModal } from './ProfileModal';
 import { useAuth } from '../lib/AuthContext';
+import { getDirectImageUrl } from '../lib/utils';
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isAdmin } = useAuth();
@@ -136,7 +137,12 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                 ) : (
                   cartItems.map((item) => (
                     <div key={item.id} className="flex space-x-4 bg-white/5 p-4 rounded-xl border border-white/5">
-                      <img src={item.imageUrl} className="w-20 h-20 object-cover rounded-lg" alt={item.name} />
+                      <img 
+                        referrerPolicy="no-referrer"
+                        src={getDirectImageUrl(item.imageUrl)} 
+                        className="w-20 h-20 object-cover rounded-lg" 
+                        alt={item.name} 
+                      />
                       <div className="flex-1">
                         <h4 className="font-bold text-sm">{item.name}</h4>
                         <div className="flex items-center justify-between mt-2">
