@@ -6,6 +6,7 @@ import { auth } from '../lib/firebase';
 import { useCartStore } from '../store/useCartStore';
 import { motion, AnimatePresence } from 'motion/react';
 import { AuthModal } from './AuthModal';
+import { ProfileModal } from './ProfileModal';
 import { useAuth } from '../lib/AuthContext';
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -13,6 +14,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const cartItems = useCartStore((state) => state.items);
   const cartTotal = useCartStore((state) => state.total);
   const removeItem = useCartStore((state) => state.removeItem);
@@ -26,6 +28,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   return (
     <div className="min-h-screen flex flex-col font-sans">
       <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
+      <ProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
       {/* Navbar */}
       <nav className="sticky top-0 z-50 bg-gamer-dark/80 backdrop-blur-md border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -65,7 +68,13 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
               {user ? (
                 <div className="flex items-center space-x-4">
-                  <img src={user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName || user.email}`} className="w-8 h-8 rounded-full border border-gamer-accent" alt="Profile" />
+                  <button 
+                    onClick={() => setIsProfileOpen(true)} 
+                    className="hover:scale-105 transition-transform duration-200 cursor-pointer focus:outline-none"
+                    title="Ver mi perfil"
+                  >
+                    <img src={user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName || user.email}`} className="w-8 h-8 rounded-full border border-gamer-accent" alt="Profile" />
+                  </button>
                   <button onClick={logout} className="p-2 text-white/70 hover:text-gamer-danger transition-colors">
                     <LogOut size={20} />
                   </button>

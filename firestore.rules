@@ -46,7 +46,7 @@ service cloud.firestore {
       return data.name is string && data.name.size() <= 200
         && data.price is number && data.price >= 0
         && data.stock is int && data.stock >= 0
-        && data.category in ['keyboards', 'mice', 'controllers']
+        && data.category is string && data.category.size() <= 100
         && (data.get('imageUrl', '') is string);
     }
 
@@ -61,7 +61,7 @@ service cloud.firestore {
     function isValidOrder(data) {
       return data.userId == request.auth.uid
         && data.total is number && data.total >= 0
-        && data.status in ['pending', 'paid', 'shipped', 'cancelled']
+        && data.status in ['pending', 'paid', 'shipped', 'completed', 'cancelled']
         && data.items is list && data.items.size() > 0;
     }
 

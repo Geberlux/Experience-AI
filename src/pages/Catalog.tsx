@@ -7,6 +7,7 @@ import { useAuth } from '../lib/AuthContext';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { collection, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { getDirectImageUrl } from '../lib/utils';
+import { motion } from 'motion/react';
 
 export const Catalog = () => {
   const { isAdmin } = useAuth();
@@ -19,6 +20,9 @@ export const Catalog = () => {
 
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
+  const [customCategory, setCustomCategory] = useState('');
+
   const [formData, setFormData] = useState<Partial<Product>>({
     name: '',
     description: '',
@@ -30,6 +34,18 @@ export const Catalog = () => {
     featured: false
   });
 
+  const uniqueCategories = Array.from(new Set(['keyboards', 'mice', 'controllers', ...products.map(p => p.category).filter(Boolean)]));
+
+  const getCategoryLabel = (cat: string) => {
+    const customLabels: Record<string, string> = {
+      all: 'Ver Todo',
+      keyboards: 'Teclados',
+      mice: 'Mouses',
+      controllers: 'Controles'
+    };
+    return customLabels[cat] || cat.charAt(0).toUpperCase() + cat.slice(1);
+  };
+
   useEffect(() => {
     const unsub = subscribeToProducts((data) => {
       setProducts(data);
@@ -40,13 +56,25 @@ export const Catalog = () => {
 
   const handleSave = async () => {
     try {
+      const finalCategory = showNewCategoryInput ? customCategory.trim().toLowerCase() : formData.category;
+      if (!finalCategory) {
+        alert('Por favor especifica una categoría válida.');
+        return;
+      }
+      const finalData = {
+        ...formData,
+        category: finalCategory
+      };
+
       if (editingId) {
-        await updateDoc(doc(db, 'products', editingId), formData);
+        await updateDoc(doc(db, 'products', editingId), finalData);
       } else {
-        await addDoc(collection(db, 'products'), formData);
+        await addDoc(collection(db, 'products'), finalData);
       }
       setIsAdding(false);
       setEditingId(null);
+      setShowNewCategoryInput(false);
+      setCustomCategory('');
       setFormData({ name: '', description: '', price: 0, stock: 0, category: 'keyboards', imageUrl: '', active: true, featured: false });
     } catch (err) {
       handleFirestoreError(err, editingId ? OperationType.UPDATE : OperationType.CREATE, 'products');
@@ -121,14 +149,39 @@ export const Catalog = () => {
                 <div className="space-y-1">
                   <label className="text-[10px] uppercase tracking-widest text-white/40 font-bold ml-2">Categoría</label>
                   <select 
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-4 focus:border-gamer-neon outline-none appearance-none"
-                    value={formData.category || 'keyboards'}
-                    onChange={e => setFormData({...formData, category: e.target.value as any})}
+                    className="w-full bg-[#121118] text-white border border-white/10 rounded-2xl px-4 py-4 focus:border-gamer-neon outline-none"
+                    value={showNewCategoryInput ? '__new__' : (formData.category || 'keyboards')}
+                    onChange={e => {
+                      if (e.target.value === '__new__') {
+                        setShowNewCategoryInput(true);
+                      } else {
+                        setShowNewCategoryInput(false);
+                        setFormData({...formData, category: e.target.value});
+                      }
+                    }}
                   >
-                    <option value="keyboards">Teclado</option>
-                    <option value="mice">Mouse</option>
-                    <option value="controllers">Control</option>
+                    {uniqueCategories.map(cat => (
+                      <option key={cat} value={cat} className="bg-[#121118] text-white font-sans py-2">
+                        {getCategoryLabel(cat)}
+                      </option>
+                    ))}
+                    <option value="__new__" className="bg-[#121118] text-gamer-neon font-sans py-2 font-bold">+ Crear nueva categoría...</option>
                   </select>
+
+                  {showNewCategoryInput && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="mt-3"
+                    >
+                      <input 
+                        placeholder="Nombre de la nueva categoría (ej: Auriculares)" 
+                        className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-4 focus:border-gamer-neon outline-none transition-all text-xs"
+                        value={customCategory}
+                        onChange={e => setCustomCategory(e.target.value)}
+                      />
+                    </motion.div>
+                  )}
                 </div>
                 <div className="space-y-1">
                   <label className="text-[10px] uppercase tracking-widest text-white/40 font-bold ml-2">Precio ($)</label>
@@ -192,7 +245,7 @@ export const Catalog = () => {
       )}
 
       <div className="flex overflow-x-auto space-x-4 pb-8 no-scrollbar scroll-smooth">
-        {['all', 'keyboards', 'mice', 'controllers'].map((cat) => (
+        {['all', ...uniqueCategories].map((cat) => (
           <button 
             key={cat}
             onClick={() => setActiveCategory(cat)}
@@ -202,7 +255,7 @@ export const Catalog = () => {
                 : 'bg-white/5 text-white/60 border-white/10 hover:border-white/30'
             }`}
           >
-            {cat === 'all' ? 'Ver Todo' : cat === 'keyboards' ? 'Teclados' : cat === 'mice' ? 'Mouses' : 'Controles'}
+            {getCategoryLabel(cat)}
           </button>
         ))}
       </div>

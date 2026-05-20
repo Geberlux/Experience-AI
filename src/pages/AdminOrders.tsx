@@ -18,7 +18,7 @@ interface Order {
   userName?: string;
   items: OrderItem[];
   total: number;
-  status: 'pending' | 'paid' | 'shipped' | 'cancelled';
+  status: 'pending' | 'paid' | 'shipped' | 'completed' | 'cancelled';
   createdAt: string;
   mercadopagoId?: string;
   shipping?: {
@@ -31,10 +31,11 @@ interface Order {
 }
 
 const STATUS_CONFIG = {
-  pending: { label: 'Pendiente', color: 'text-yellow-500', bg: 'bg-yellow-500/10', icon: Clock },
-  paid: { label: 'Pagado', color: 'text-green-500', bg: 'bg-green-500/10', icon: CheckCircle2 },
-  shipped: { label: 'En Camino', color: 'text-blue-500', bg: 'bg-blue-500/10', icon: Truck },
-  cancelled: { label: 'Cancelado', color: 'text-red-500', bg: 'bg-red-500/10', icon: XCircle }
+  pending: { label: 'Pendiente', color: 'text-yellow-500/85', bg: 'bg-yellow-500/10', icon: Clock },
+  paid: { label: 'Pagado', color: 'text-green-400', bg: 'bg-green-500/10', icon: CheckCircle2 },
+  shipped: { label: 'En Camino', color: 'text-blue-400', bg: 'bg-blue-500/10', icon: Truck },
+  completed: { label: 'Finalizado', color: 'text-gamer-neon', bg: 'bg-gamer-neon/15', icon: CheckCircle2 },
+  cancelled: { label: 'Cancelado', color: 'text-red-400', bg: 'bg-red-500/10', icon: XCircle }
 };
 
 export const AdminOrders = () => {
@@ -99,15 +100,15 @@ export const AdminOrders = () => {
               />
            </div>
            <select 
-            className="bg-gamer-card border border-white/10 rounded-full px-6 py-3 text-sm focus:outline-none focus:border-gamer-neon appearance-none"
+            className="bg-[#121118] text-white border border-white/10 rounded-full px-6 py-3 text-sm focus:outline-none focus:border-gamer-neon"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
            >
-             <option value="all">Todos los Estados</option>
-             <option value="pending">Pendientes</option>
-             <option value="paid">Pagados</option>
-             <option value="shipped">En Camino</option>
-             <option value="cancelled">Cancelados</option>
+             <option value="all" className="bg-[#121118] text-white font-sans">Todos los Estados</option>
+             <option value="paid" className="bg-[#121118] text-white font-sans">Pagados</option>
+             <option value="shipped" className="bg-[#121118] text-white font-sans">En Camino</option>
+             <option value="completed" className="bg-[#121118] text-white font-sans">Finalizados</option>
+             <option value="cancelled" className="bg-[#121118] text-white font-sans">Cancelados</option>
            </select>
         </div>
       </div>
@@ -151,14 +152,14 @@ export const AdminOrders = () => {
 
                     <div className="flex items-center space-x-4">
                        <select 
-                         className="bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-xs focus:border-gamer-neon outline-none"
+                         className="bg-[#121118] text-white border border-white/10 rounded-lg px-4 py-2 text-xs focus:border-gamer-neon outline-none"
                          value={order.status}
                          onChange={(e) => handleUpdateStatus(order.id, e.target.value)}
                        >
-                         <option value="pending">Poner Pendiente</option>
-                         <option value="paid">Marcar Pagado</option>
-                         <option value="shipped">Marcar Enviado</option>
-                         <option value="cancelled">Cancelar Pedido</option>
+                         <option value="paid" className="bg-[#121118] text-white font-sans">Marcar Pagado</option>
+                         <option value="shipped" className="bg-[#121118] text-white font-sans">Marcar En Camino</option>
+                         <option value="completed" className="bg-[#121118] text-white font-sans">Marcar Finalizado</option>
+                         <option value="cancelled" className="bg-[#121118] text-white font-sans">Cancelar Pedido</option>
                        </select>
 
                        <button 

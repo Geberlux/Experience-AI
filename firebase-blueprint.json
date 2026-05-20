@@ -23,7 +23,7 @@
         "price": { "type": "number" },
         "stock": { "type": "number" },
         "imageUrl": { "type": "string" },
-        "category": { "type": "string", "enum": ["keyboards", "mice", "controllers"] },
+        "category": { "type": "string" },
         "active": { "type": "boolean" },
         "featured": { "type": "boolean" }
       },
@@ -37,7 +37,7 @@
         "userId": { "type": "string" },
         "items": { "type": "array" },
         "total": { "type": "number" },
-        "status": { "type": "string", "enum": ["pending", "paid", "shipped", "cancelled"] },
+        "status": { "type": "string", "enum": ["pending", "paid", "shipped", "completed", "cancelled"] },
         "createdAt": { "type": "string", "format": "date-time" },
         "mercadopagoId": { "type": "string" }
       },
