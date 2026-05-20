@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
-import { collection, query, onSnapshot, doc, updateDoc, orderBy } from 'firebase/firestore';
+import { collection, query, onSnapshot, doc, updateDoc, orderBy, runTransaction } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
 import { Search, Filter, Clock, CheckCircle2, Truck, XCircle, ChevronRight, Eye, X, AlertTriangle, User, Mail, CreditCard } from 'lucide-react';
 
@@ -60,13 +60,45 @@ export const AdminOrders = () => {
   const handleUpdateStatus = async (orderId: string, newStatus: string) => {
     const isCritical = newStatus === 'cancelled';
     const message = isCritical 
-      ? '¿ESTÁS SEGURO? Esta acción cancelará la venta y es irreversible.' 
+      ? '¿ESTÁS SEGURO? Esta acción cancelará la venta, restaurará el stock de los productos y es irreversible.' 
       : `¿Cambiar estado a ${newStatus.toUpperCase()}?`;
 
     if (!window.confirm(message)) return;
 
     try {
-      await updateDoc(doc(db, 'orders', orderId), { status: newStatus });
+      if (newStatus === 'cancelled') {
+        const orderRef = doc(db, 'orders', orderId);
+        await runTransaction(db, async (transaction) => {
+          const orderSnap = await transaction.get(orderRef);
+          if (!orderSnap.exists()) {
+            throw new Error('El pedido no existe.');
+          }
+          const orderData = orderSnap.data() as Order;
+          if (orderData.status === 'cancelled') {
+            return; // Already cancelled
+          }
+
+          // Restore product stock
+          if (orderData.items && Array.isArray(orderData.items)) {
+            for (const item of orderData.items) {
+              const productRef = doc(db, 'products', item.id);
+              const productSnap = await transaction.get(productRef);
+              if (productSnap.exists()) {
+                const currentStock = productSnap.data().stock !== undefined ? productSnap.data().stock : 0;
+                const currentSales = productSnap.data().salesCount !== undefined ? productSnap.data().salesCount : 0;
+                transaction.update(productRef, {
+                  stock: currentStock + item.quantity,
+                  salesCount: Math.max(0, currentSales - item.quantity)
+                });
+              }
+            }
+          }
+
+          transaction.update(orderRef, { status: 'cancelled' });
+        });
+      } else {
+        await updateDoc(doc(db, 'orders', orderId), { status: newStatus });
+      }
     } catch (err) {
       handleFirestoreError(err, OperationType.UPDATE, 'orders');
     }
@@ -79,6 +111,8 @@ export const AdminOrders = () => {
                           o.userEmail?.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesFilter && matchesSearch;
   });
+
+  const activeSelectedOrder = selectedOrder ? orders.find(o => o.id === selectedOrder.id) || selectedOrder : null;
 
   return (
     <div className="pt-32 pb-24 max-w-7xl mx-auto px-4">
@@ -153,10 +187,12 @@ export const AdminOrders = () => {
 
                     <div className="flex items-center space-x-4" onClick={(e) => e.stopPropagation()}>
                        <select 
-                         className="bg-[#121118] text-white border border-white/10 rounded-lg px-4 py-2 text-xs focus:border-gamer-neon outline-none"
+                         disabled={order.status === 'cancelled'}
+                         className="bg-[#121118] text-white border border-white/10 rounded-lg px-4 py-2 text-xs focus:border-gamer-neon outline-none disabled:opacity-40 disabled:cursor-not-allowed"
                          value={order.status}
                          onChange={(e) => handleUpdateStatus(order.id, e.target.value)}
                        >
+                         <option value="pending" disabled className="bg-[#121118] text-white font-sans opacity-50">Pendiente</option>
                          <option value="paid" className="bg-[#121118] text-white font-sans">Marcar Pagado</option>
                          <option value="shipped" className="bg-[#121118] text-white font-sans">Marcar En Camino</option>
                          <option value="completed" className="bg-[#121118] text-white font-sans">Marcar Finalizado</option>
@@ -184,7 +220,7 @@ export const AdminOrders = () => {
 
       {/* Details Modal */}
       <AnimatePresence>
-        {selectedOrder && (
+        {selectedOrder && activeSelectedOrder && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
             <motion.div 
               initial={{ scale: 0.9, opacity: 0 }}
@@ -195,7 +231,7 @@ export const AdminOrders = () => {
               <div className="p-8 border-b border-white/5 flex justify-between items-center bg-white/5">
                 <div>
                    <h3 className="text-2xl font-display font-bold uppercase tracking-tighter">Detalle de Pedido</h3>
-                   <p className="text-xs text-white/40 mt-1">ID: {selectedOrder.id}</p>
+                   <p className="text-xs text-white/40 mt-1">ID: {activeSelectedOrder.id}</p>
                 </div>
                 <button onClick={() => setSelectedOrder(null)} className="p-2 text-white/40 hover:text-gamer-danger transition-colors">
                   <X size={24} />
@@ -211,7 +247,7 @@ export const AdminOrders = () => {
                      </div>
                      <div>
                         <p className="text-[10px] uppercase font-bold text-white/30 tracking-widest">Cliente</p>
-                        <p className="font-bold">{selectedOrder.userName || 'Usuario Elite'}</p>
+                        <p className="font-bold">{activeSelectedOrder.userName || 'Usuario Elite'}</p>
                      </div>
                   </div>
                   <div className="flex items-start space-x-4">
@@ -220,37 +256,37 @@ export const AdminOrders = () => {
                      </div>
                      <div>
                         <p className="text-[10px] uppercase font-bold text-white/30 tracking-widest">Email</p>
-                        <p className="font-bold">{selectedOrder.userEmail || 'N/A'}</p>
+                        <p className="font-bold">{activeSelectedOrder.userEmail || 'N/A'}</p>
                      </div>
                   </div>
                 </div>
 
                 {/* Status Warning if Cancelled */}
-                {selectedOrder.status === 'cancelled' && (
+                {activeSelectedOrder.status === 'cancelled' && (
                   <div className="bg-red-500/10 border border-red-500/30 p-4 rounded-2xl flex items-center space-x-3">
                      <AlertTriangle className="text-red-500" />
-                     <p className="text-sm font-bold text-red-500">ESTE PEDIDO FUE CANCELADO POR UN ADMINISTRADOR.</p>
+                     <p className="text-sm font-bold text-red-500">ESTE PEDIDO FUE CANCELADO POR EL CLIENTE O UN ADMINISTRADOR (NUEVO STOCK REINTEGRADO).</p>
                   </div>
                 )}
 
                 {/* Shipping Info */}
-                {selectedOrder.shipping && (
+                {activeSelectedOrder.shipping && (
                   <div>
                     <h4 className="text-xs font-bold uppercase tracking-widest text-white/30 mb-4 px-2">Datos de Entrega</h4>
                     <div className="bg-white/5 rounded-2xl p-6 border border-white/5 space-y-4">
                        <div className="grid grid-cols-2 gap-4">
                           <div>
                             <p className="text-[10px] uppercase text-white/40 font-bold">Destinatario</p>
-                            <p className="text-sm font-bold">{selectedOrder.shipping.name}</p>
+                            <p className="text-sm font-bold">{activeSelectedOrder.shipping.name}</p>
                           </div>
                           <div>
                             <p className="text-[10px] uppercase text-white/40 font-bold">Teléfono</p>
-                            <p className="text-sm font-bold">{selectedOrder.shipping.phone}</p>
+                            <p className="text-sm font-bold">{activeSelectedOrder.shipping.phone}</p>
                           </div>
                        </div>
                        <div>
                           <p className="text-[10px] uppercase text-white/40 font-bold">Dirección</p>
-                          <p className="text-sm font-bold">{selectedOrder.shipping.address}, {selectedOrder.shipping.city} ({selectedOrder.shipping.zip})</p>
+                          <p className="text-sm font-bold">{activeSelectedOrder.shipping.address}, {activeSelectedOrder.shipping.city} ({activeSelectedOrder.shipping.zip})</p>
                        </div>
                     </div>
                   </div>
@@ -270,7 +306,7 @@ export const AdminOrders = () => {
                          </tr>
                        </thead>
                        <tbody className="divide-y divide-white/5">
-                         {selectedOrder.items.map((item) => (
+                         {activeSelectedOrder.items.map((item) => (
                            <tr key={item.id}>
                              <td className="px-6 py-4 font-bold">{item.name}</td>
                              <td className="px-6 py-4 text-center">{item.quantity}</td>
@@ -289,11 +325,11 @@ export const AdminOrders = () => {
                       <p className="text-[10px] uppercase font-bold text-white/30 tracking-widest flex items-center">
                         <CreditCard size={12} className="mr-1" /> Método de Pago
                       </p>
-                      <p className="text-sm font-bold">MercadoPago {selectedOrder.mercadopagoId && `(#${selectedOrder.mercadopagoId})`}</p>
+                      <p className="text-sm font-bold">MercadoPago {activeSelectedOrder.mercadopagoId && `(#${activeSelectedOrder.mercadopagoId})`}</p>
                    </div>
                    <div className="text-right">
                       <p className="text-[10px] uppercase font-bold text-white/30 tracking-widest">Total Transacción</p>
-                      <p className="text-4xl font-display font-bold text-gamer-neon">${selectedOrder.total}</p>
+                      <p className="text-4xl font-display font-bold text-gamer-neon">${activeSelectedOrder.total}</p>
                    </div>
                 </div>
               </div>

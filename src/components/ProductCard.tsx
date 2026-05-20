@@ -63,16 +63,16 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, isAdmin, onEd
           alt={product.name} 
           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
         />
-        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center space-x-4">
+        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center space-x-4">
            <button 
              onClick={handleAddToCart}
-             className="w-12 h-12 bg-gamer-neon text-black rounded-full flex items-center justify-center hover:bg-white transition-colors"
+             className="w-12 h-12 bg-white/10 text-white border border-white/10 backdrop-blur-md rounded-full flex items-center justify-center hover:bg-gamer-neon hover:text-black hover:border-gamer-neon hover:shadow-[0_0_15px_rgba(0,255,136,0.5)] transition-all duration-300"
            >
              <ShoppingCart size={20} />
            </button>
            <button 
              onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleCardClick(); }}
-             className="w-12 h-12 bg-white text-black rounded-full flex items-center justify-center hover:bg-gamer-neon transition-colors"
+             className="w-12 h-12 bg-white/10 text-white border border-white/10 backdrop-blur-md rounded-full flex items-center justify-center hover:bg-white hover:text-black hover:border-white hover:shadow-[0_0_15px_rgba(255,255,255,0.3)] transition-all duration-300"
            >
              <Eye size={20} />
            </button>

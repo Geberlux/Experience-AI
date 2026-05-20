@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, User, Mail, ClipboardList, Trash2, Calendar, ShieldAlert, Loader2, CheckCircle2, Truck, Clock, XCircle, ChevronRight, ChevronLeft } from 'lucide-react';
-import { auth, db } from '../lib/firebase';
-import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
+import { auth, db, handleFirestoreError, OperationType } from '../lib/firebase';
+import { collection, query, where, orderBy, onSnapshot, doc, runTransaction } from 'firebase/firestore';
 import { useAuth } from '../lib/AuthContext';
 
 interface ProfileModalProps {
@@ -51,6 +51,9 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) =
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
+
+  const activeSelectedOrder = selectedOrder ? orders.find(o => o.id === selectedOrder.id) || selectedOrder : null;
 
   useEffect(() => {
     if (!isOpen || !user) return;
@@ -103,6 +106,55 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) =
         setErrorMsg('Error al eliminar la cuenta. Por favor intente más tarde.');
       }
       setDeleting(false);
+    }
+  };
+
+  const handleCancelOrder = async (orderId: string) => {
+    if (!window.confirm('¿ESTÁS SEGURO? Esta acción cancelará tu pedido, devolverá los productos al stock disponible y es irreversible.')) return;
+
+    setCancellingOrderId(orderId);
+    try {
+      const orderRef = doc(db, 'orders', orderId);
+      await runTransaction(db, async (transaction) => {
+        const orderSnap = await transaction.get(orderRef);
+        if (!orderSnap.exists()) {
+          throw new Error('El pedido no existe.');
+        }
+        const orderData = orderSnap.data() as ClientOrder;
+        if (orderData.status === 'cancelled') {
+          return; // Already cancelled
+        }
+        if (orderData.status === 'completed') {
+          throw new Error('No se puede cancelar un pedido que ya está finalizado.');
+        }
+
+        // Restore product stock
+        if (orderData.items && Array.isArray(orderData.items)) {
+          for (const item of orderData.items) {
+            const productRef = doc(db, 'products', item.id);
+            const productSnap = await transaction.get(productRef);
+            if (productSnap.exists()) {
+              const currentStock = productSnap.data().stock !== undefined ? productSnap.data().stock : 0;
+              const currentSales = productSnap.data().salesCount !== undefined ? productSnap.data().salesCount : 0;
+              transaction.update(productRef, {
+                stock: currentStock + item.quantity,
+                salesCount: Math.max(0, currentSales - item.quantity)
+              });
+            }
+          }
+        }
+
+        transaction.update(orderRef, { status: 'cancelled' });
+      });
+    } catch (err) {
+      console.error('Error canceling order:', err);
+      const msg = err instanceof Error ? err.message : 'Error al cancelar el pedido.';
+      alert(msg);
+      try {
+        handleFirestoreError(err, OperationType.UPDATE, 'orders');
+      } catch (ignored) {}
+    } finally {
+      setCancellingOrderId(null);
     }
   };
 
@@ -247,7 +299,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) =
               </div>
             ) : (
               <div className="flex-1 flex flex-col min-h-0">
-                {selectedOrder ? (
+                {activeSelectedOrder ? (
                   <div className="flex-1 flex flex-col min-h-0">
                     <div className="flex items-center space-x-2 mb-4">
                       <button
@@ -263,18 +315,18 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) =
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-[10px] uppercase font-bold text-white/30 tracking-widest">Pedido</p>
-                          <h4 className="font-mono font-bold text-sm text-white/90">#{selectedOrder.id.toUpperCase()}</h4>
+                          <h4 className="font-mono font-bold text-sm text-white/90">#{activeSelectedOrder.id.toUpperCase()}</h4>
                         </div>
                         <div className="text-right">
                           <p className="text-[10px] uppercase font-bold text-white/30 tracking-widest">Fecha</p>
-                          <p className="text-xs text-white/80">{new Date(selectedOrder.createdAt).toLocaleDateString()}</p>
+                          <p className="text-xs text-white/80">{new Date(activeSelectedOrder.createdAt).toLocaleDateString()}</p>
                         </div>
                       </div>
 
                       <div className="flex items-center justify-between bg-white/5 border border-white/5 rounded-2xl p-4">
                         <span className="text-xs font-bold text-white/50">Estado del Pedido:</span>
                         {(() => {
-                          const config = STATUS_CONFIG[selectedOrder.status] || STATUS_CONFIG.pending;
+                          const config = STATUS_CONFIG[activeSelectedOrder.status] || STATUS_CONFIG.pending;
                           return (
                             <span className={`text-[10px] uppercase font-bold py-1 px-3 rounded ${config.bg} ${config.color}`}>
                               {config.label}
@@ -283,23 +335,23 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) =
                         })()}
                       </div>
 
-                      {selectedOrder.shipping && (
+                      {activeSelectedOrder.shipping && (
                         <div className="bg-white/5 border border-white/5 rounded-2xl p-4 space-y-3">
                           <h4 className="text-[10px] uppercase font-bold text-white/40 tracking-widest leading-none">Detalles de Envío</h4>
                           <div className="border-t border-white/5 pt-3 space-y-2 text-xs">
                             <div className="grid grid-cols-2 gap-4">
                               <div>
                                 <p className="text-[10px] uppercase text-white/30 font-bold">Destinatario</p>
-                                <p className="text-white/80 font-bold">{selectedOrder.shipping.name}</p>
+                                <p className="text-white/80 font-bold">{activeSelectedOrder.shipping.name}</p>
                               </div>
                               <div>
                                 <p className="text-[10px] uppercase text-white/30 font-bold">Teléfono</p>
-                                <p className="text-white/80 font-bold">{selectedOrder.shipping.phone}</p>
+                                <p className="text-white/80 font-bold">{activeSelectedOrder.shipping.phone}</p>
                               </div>
                             </div>
                             <div>
                               <p className="text-[10px] uppercase text-white/30 font-bold">Dirección de Entrega</p>
-                              <p className="text-white/80 font-bold">{selectedOrder.shipping.address}, {selectedOrder.shipping.city} ({selectedOrder.shipping.zip})</p>
+                              <p className="text-white/80 font-bold">{activeSelectedOrder.shipping.address}, {activeSelectedOrder.shipping.city} ({activeSelectedOrder.shipping.zip})</p>
                             </div>
                           </div>
                         </div>
@@ -308,7 +360,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) =
                       <div className="bg-white/5 border border-white/5 rounded-2xl p-4 space-y-3">
                         <h4 className="text-[10px] uppercase font-bold text-white/40 tracking-widest leading-none">Productos Comprados</h4>
                         <div className="border-t border-white/5 pt-3 divide-y divide-white/5">
-                          {selectedOrder.items?.map((item, idx) => (
+                          {activeSelectedOrder.items?.map((item, idx) => (
                             <div key={idx} className="flex justify-between items-center py-2 text-xs">
                               <div>
                                 <p className="text-white/80 font-medium">{item.name}</p>
@@ -323,13 +375,30 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) =
                       <div className="bg-white/5 border border-white/5 rounded-2xl p-4 flex justify-between items-center">
                         <div>
                           <p className="text-[10px] uppercase text-white/40 font-bold">Método de Pago</p>
-                          <p className="text-xs text-white/80 mt-0.5">{selectedOrder.paymentMethod || 'Mock Credit Card'} (**** {selectedOrder.paymentLast4 || '1234'})</p>
+                          <p className="text-xs text-white/80 mt-0.5">{activeSelectedOrder.paymentMethod || 'Mock Credit Card'} (**** {activeSelectedOrder.paymentLast4 || '1234'})</p>
                         </div>
                         <div className="text-right">
                           <p className="text-[10px] uppercase text-white/40 font-bold">Total Pagado</p>
-                          <span className="font-display font-bold text-gamer-neon text-lg">${selectedOrder.total}</span>
+                          <span className="font-display font-bold text-gamer-neon text-lg">${activeSelectedOrder.total}</span>
                         </div>
                       </div>
+
+                      {activeSelectedOrder.status !== 'completed' && activeSelectedOrder.status !== 'cancelled' && (
+                        <button
+                          disabled={cancellingOrderId === activeSelectedOrder.id}
+                          onClick={() => handleCancelOrder(activeSelectedOrder.id)}
+                          className="w-full py-3 bg-red-500/10 hover:bg-red-500 hover:text-white border border-red-500/30 text-red-500 font-bold text-xs uppercase tracking-widest rounded-2xl transition-all flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {cancellingOrderId === activeSelectedOrder.id ? (
+                            <>
+                              <Loader2 className="animate-spin" size={14} />
+                              <span>CANCELANDO PEDIDO...</span>
+                            </>
+                          ) : (
+                            <span>CANCELAR PEDIDO</span>
+                          )}
+                        </button>
+                      )}
                     </div>
                   </div>
                 ) : (

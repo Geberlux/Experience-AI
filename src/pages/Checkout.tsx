@@ -15,6 +15,8 @@ export const Checkout = () => {
   
   const [step, setStep] = useState(1); // 1: Shipping, 2: Payment, 3: Success
   const [loading, setLoading] = useState(false);
+  const [purchasedItems, setPurchasedItems] = useState<typeof items>([]);
+  const [purchasedTotal, setPurchasedTotal] = useState(0);
   const [shippingData, setShippingData] = useState({
     name: user?.displayName || '',
     address: '',
@@ -125,6 +127,8 @@ export const Checkout = () => {
         transaction.set(orderRef, orderData);
       });
 
+      setPurchasedItems(items);
+      setPurchasedTotal(total);
       clearCart();
       setStep(3);
     } catch (err) {
@@ -140,6 +144,9 @@ export const Checkout = () => {
       setLoading(false);
     }
   };
+
+  const displayItems = step === 3 ? purchasedItems : items;
+  const displayTotal = step === 3 ? purchasedTotal : total;
 
   return (
     <div className="pt-32 pb-24 min-h-screen max-w-7xl mx-auto px-4">
@@ -369,7 +376,7 @@ export const Checkout = () => {
               <h3 className="text-xl font-display font-bold uppercase mb-8 border-b border-white/5 pb-4">Resumen de Compra</h3>
               
               <div className="space-y-6 mb-8 max-h-[40vh] overflow-y-auto pr-2">
-                {items.map((item) => (
+                {displayItems.map((item) => (
                   <div key={item.id} className="flex space-x-4 items-center">
                     <img 
                       referrerPolicy="no-referrer"
@@ -389,7 +396,7 @@ export const Checkout = () => {
               <div className="space-y-4 px-2 pt-8 border-t border-white/10">
                  <div className="flex justify-between text-sm text-white/40">
                     <span>Subtotal</span>
-                    <span>${total}</span>
+                    <span>${displayTotal}</span>
                  </div>
                  <div className="flex justify-between text-sm text-white/40">
                     <span>Envío</span>
@@ -397,7 +404,7 @@ export const Checkout = () => {
                  </div>
                  <div className="flex justify-between text-xl font-display font-bold pt-4 text-gamer-neon">
                     <span>TOTAL</span>
-                    <span>${total}</span>
+                    <span>${displayTotal}</span>
                  </div>
               </div>
 
