@@ -29,6 +29,29 @@ export const Checkout = () => {
     cvv: ''
   });
 
+  const handleCardNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = e.target.value.replace(/\D/g, '');
+    if (val.length > 16) val = val.slice(0, 16);
+    const matches = val.match(/.{1,4}/g);
+    const formatted = matches ? matches.join(' ') : '';
+    setCardData(prev => ({ ...prev, number: formatted }));
+  };
+
+  const handleExpiryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = e.target.value.replace(/\D/g, '');
+    if (val.length > 4) val = val.slice(0, 4);
+    if (val.length > 2) {
+      val = `${val.slice(0, 2)} / ${val.slice(2)}`;
+    }
+    setCardData(prev => ({ ...prev, expiry: val }));
+  };
+
+  const handleCvvChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = e.target.value.replace(/\D/g, '');
+    if (val.length > 4) val = val.slice(0, 4);
+    setCardData(prev => ({ ...prev, cvv: val }));
+  };
+
   if (items.length === 0 && step !== 3) {
     navigate('/catalog');
     return null;
@@ -62,7 +85,7 @@ export const Checkout = () => {
         shipping: shippingData,
         createdAt: new Date().toISOString(),
         paymentMethod: 'Mock Credit Card',
-        paymentLast4: cardData.number.slice(-4)
+        paymentLast4: (cardData.number || '').replace(/\s/g, '').slice(-4) || '1234'
       };
       
       await addDoc(collection(db, 'orders'), orderData);
@@ -211,7 +234,7 @@ export const Checkout = () => {
                       maxLength={19}
                       className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-4 focus:border-gamer-neon outline-none transition-all font-mono"
                       value={cardData.number}
-                      onChange={e => setCardData({...cardData, number: e.target.value.replace(/\s?/g, '').replace(/(\d{4})/g, '$1 ').trim()})}
+                      onChange={handleCardNumberChange}
                     />
                   </div>
                   <div className="space-y-1">
@@ -233,7 +256,7 @@ export const Checkout = () => {
                         maxLength={7}
                         className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-4 focus:border-gamer-neon outline-none transition-all"
                         value={cardData.expiry}
-                        onChange={e => setCardData({...cardData, expiry: e.target.value.replace(/\s?/g, '').replace(/(\d{2})/, '$1 / ').trim()})}
+                        onChange={handleExpiryChange}
                       />
                     </div>
                     <div className="space-y-1">
@@ -242,10 +265,10 @@ export const Checkout = () => {
                         required
                         type="password"
                         placeholder="•••"
-                        maxLength={3}
+                        maxLength={4}
                         className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-4 focus:border-gamer-neon outline-none transition-all"
                         value={cardData.cvv}
-                        onChange={e => setCardData({...cardData, cvv: e.target.value.replace(/\D/g, '')})}
+                        onChange={handleCvvChange}
                       />
                     </div>
                   </div>

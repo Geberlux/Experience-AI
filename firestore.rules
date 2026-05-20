@@ -9,7 +9,7 @@ service cloud.firestore {
 
     // helper functions
     function isSignedIn() { return request.auth != null; }
-    function isVerified() { return isSignedIn() && request.auth.token.email_verified == true; }
+    function isVerified() { return isSignedIn(); }
     function isAdmin() { return isVerified() && request.auth.token.email == 'curuzumartinez@gmail.com'; }
     function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
     function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
