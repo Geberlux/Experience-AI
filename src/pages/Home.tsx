@@ -230,9 +230,6 @@ export const Home = () => {
                 <span>EXPLORAR CATÁLOGO</span>
                 <ChevronRight size={20} />
               </Link>
-              <button className="border border-white/20 text-white font-bold px-10 py-5 rounded-full hover:bg-white/5 transition-all">
-                VER NOVEDADES
-              </button>
             </div>
           </motion.div>
         </div>
