@@ -235,7 +235,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                   <h2 className="text-2xl font-display font-bold uppercase tracking-tighter">
                     {mode === 'options' ? 'Acceso Elite' : mode === 'login' ? 'Ingresar' : 'Unirse al Team'}
                   </h2>
-                  <button onClick={onClose} className="p-2 hover:text-gamer-danger transition-colors">
+                  <button 
+                    onClick={onClose} 
+                    disabled={loading || isSuccess}
+                    className="p-2 hover:text-gamer-danger transition-colors disabled:opacity-30 disabled:pointer-events-none"
+                  >
                     <X />
                   </button>
                 </div>
@@ -250,14 +254,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                   <div className="space-y-4">
                     <button 
                       onClick={() => setMode('login')}
-                      className="w-full py-4 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center space-x-3 hover:border-gamer-neon transition-all group"
+                      disabled={loading || isSuccess}
+                      className="w-full py-4 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center space-x-3 hover:border-gamer-neon transition-all group disabled:opacity-50 disabled:pointer-events-none"
                     >
                       <LogIn className="group-hover:text-gamer-neon" />
                       <span className="font-bold">Ingresar</span>
                     </button>
                     <button 
                       onClick={() => setMode('register')}
-                      className="w-full py-4 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center space-x-3 hover:border-gamer-accent transition-all group"
+                      disabled={loading || isSuccess}
+                      className="w-full py-4 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center space-x-3 hover:border-gamer-accent transition-all group disabled:opacity-50 disabled:pointer-events-none"
                     >
                       <UserPlus className="group-hover:text-gamer-accent" />
                       <span className="font-bold">Crear Cuenta</span>
@@ -269,8 +275,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                     </div>
                     <button 
                       onClick={handleGoogleLogin}
-                      disabled={loading}
-                      className="w-full py-4 bg-gamer-neon text-black rounded-2xl flex items-center justify-center space-x-3 font-bold hover:bg-white transition-all transform active:scale-95"
+                      disabled={loading || isSuccess}
+                      className="w-full py-4 bg-gamer-neon text-black rounded-2xl flex items-center justify-center space-x-3 font-bold hover:bg-white transition-all transform active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
                     >
                       <Chrome size={20} />
                       <span>Ingresar con Google</span>
@@ -285,8 +291,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                         <User className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 group-focus-within:text-gamer-neon" size={18} />
                         <input 
                           required
+                          disabled={loading || isSuccess}
                           placeholder="Tu nombre real"
-                          className="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 py-4 focus:border-gamer-neon focus:outline-none transition-all"
+                          className="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 py-4 focus:border-gamer-neon focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                           value={displayName}
                           onChange={e => setDisplayName(e.target.value)}
                         />
@@ -297,8 +304,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                       <input 
                         required
                         type="email"
+                        disabled={loading || isSuccess}
                         placeholder="Email"
-                        className={`w-full bg-white/5 border rounded-2xl pl-12 pr-4 py-4 focus:outline-none transition-all ${
+                        className={`w-full bg-white/5 border rounded-2xl pl-12 pr-4 py-4 focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
                           mode === 'register' && emailStatus === 'taken' ? 'border-gamer-danger shadow-[0_0_10px_rgba(255,0,85,0.2)]' : 
                           mode === 'register' && emailStatus === 'available' ? 'border-green-500 shadow-[0_0_10px_rgba(34,197,94,0.2)]' : 
                           'border-white/10 focus:border-gamer-neon'
@@ -319,16 +327,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                       <input 
                         required
                         type="password"
+                        disabled={loading || isSuccess}
                         placeholder="Contraseña"
-                        className="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 py-4 focus:border-gamer-neon focus:outline-none transition-all"
+                        className="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 py-4 focus:border-gamer-neon focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         value={password}
                         onChange={e => setPassword(e.target.value)}
                       />
                     </div>
                     <button 
                       type="submit"
-                      disabled={loading}
-                      className="w-full py-4 bg-gamer-accent text-white rounded-2xl font-bold uppercase tracking-widest hover:shadow-[0_0_20px_rgba(112,0,255,0.4)] transition-all"
+                      disabled={loading || isSuccess}
+                      className="w-full py-4 bg-gamer-accent text-white rounded-2xl font-bold uppercase tracking-widest hover:shadow-[0_0_20px_rgba(112,0,255,0.4)] transition-all disabled:opacity-50 disabled:pointer-events-none"
                     >
                       {loading ? 'Procesando...' : mode === 'login' ? 'Iniciar Sesión' : 'Registrarme'}
                     </button>
@@ -342,8 +351,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                     <button 
                       type="button"
                       onClick={handleGoogleLogin}
-                      disabled={loading}
-                      className="w-full py-3 bg-white/5 border border-white/10 text-white rounded-2xl flex items-center justify-center space-x-3 font-bold hover:bg-white hover:text-black transition-all transform active:scale-95"
+                      disabled={loading || isSuccess}
+                      className="w-full py-3 bg-white/5 border border-white/10 text-white rounded-2xl flex items-center justify-center space-x-3 font-bold hover:bg-white hover:text-black transition-all transform active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
                     >
                       <Chrome size={18} />
                       <span className="text-sm">Continuar con Google</span>
@@ -352,16 +361,26 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                     <div className="text-center mt-4">
                       <button 
                         type="button"
-                        onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
-                        className="text-xs text-white/40 hover:text-gamer-neon underline"
+                        onClick={() => {
+                          if (!loading && !isSuccess) {
+                            setMode(mode === 'login' ? 'register' : 'login');
+                          }
+                        }}
+                        disabled={loading || isSuccess}
+                        className="text-xs text-white/40 hover:text-gamer-neon underline disabled:opacity-50 disabled:pointer-events-none"
                       >
                         {mode === 'login' ? '¿No tienes cuenta? Regístrate' : '¿Ya tienes cuenta? Ingresa'}
                       </button>
                     </div>
                     <button 
                       type="button"
-                      onClick={() => setMode('options')}
-                      className="w-full text-[10px] text-white/20 uppercase font-bold tracking-widest mt-4 hover:text-white"
+                      onClick={() => {
+                        if (!loading && !isSuccess) {
+                          setMode('options');
+                        }
+                      }}
+                      disabled={loading || isSuccess}
+                      className="w-full text-[10px] text-white/20 uppercase font-bold tracking-widest mt-4 hover:text-white disabled:opacity-50 disabled:pointer-events-none"
                     >
                       Volver a opciones
                     </button>
