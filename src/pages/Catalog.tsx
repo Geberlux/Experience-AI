@@ -63,7 +63,8 @@ export const Catalog = () => {
       }
       const finalData = {
         ...formData,
-        category: finalCategory
+        category: finalCategory,
+        salesCount: formData.salesCount !== undefined ? formData.salesCount : 0
       };
 
       if (editingId) {

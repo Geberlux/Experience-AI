@@ -11,6 +11,7 @@ export interface Product {
   category: 'keyboards' | 'mice' | 'controllers';
   active: boolean;
   featured: boolean;
+  salesCount?: number;
 }
 
 export async function getProducts() {

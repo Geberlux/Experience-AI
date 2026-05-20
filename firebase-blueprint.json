@@ -25,7 +25,8 @@
         "imageUrl": { "type": "string" },
         "category": { "type": "string" },
         "active": { "type": "boolean" },
-        "featured": { "type": "boolean" }
+        "featured": { "type": "boolean" },
+        "salesCount": { "type": "number" }
       },
       "required": ["name", "price", "category"]
     },

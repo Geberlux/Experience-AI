@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import { ChevronRight, Cpu, MousePointer2, Keyboard, Gamepad2, ShieldCheck, Truck, Trophy, Edit2, Save, X, Image as ImageIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ProductCard } from '../components/ProductCard';
-import { Product } from '../lib/products';
+import { Product, subscribeToProducts } from '../lib/products';
 import { useAuth } from '../lib/AuthContext';
 import { getHomeContent, updateHomeContent, HomeContent, DEFAULT_HOME_CONTENT } from '../lib/cms';
 import { getDirectImageUrl } from '../lib/utils';
@@ -47,6 +47,7 @@ const MOCK_FEATURED: Product[] = [
 export const Home = () => {
   const { isAdmin } = useAuth();
   const [content, setContent] = useState<HomeContent>(DEFAULT_HOME_CONTENT);
+  const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -55,9 +56,20 @@ export const Home = () => {
     const fetchContent = async () => {
       const data = await getHomeContent();
       setContent(data);
-      setLoading(false);
     };
     fetchContent();
+
+    const unsub = subscribeToProducts((prodList) => {
+      const sorted = [...prodList].sort((a, b) => {
+        const salesA = a.salesCount || 0;
+        const salesB = b.salesCount || 0;
+        return salesB - salesA;
+      });
+      setFeaturedProducts(sorted.slice(0, 3));
+      setLoading(false);
+    });
+
+    return () => unsub();
   }, []);
 
   const handleSave = async () => {
@@ -261,7 +273,7 @@ export const Home = () => {
             </Link>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-            {MOCK_FEATURED.map((p) => (
+            {featuredProducts.map((p) => (
               <ProductCard key={p.id} product={p} />
             ))}
           </div>

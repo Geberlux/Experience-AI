@@ -47,13 +47,15 @@ service cloud.firestore {
         && data.price is number && data.price >= 0
         && data.stock is int && data.stock >= 0
         && data.category is string && data.category.size() <= 100
-        && (data.get('imageUrl', '') is string);
+        && (data.get('imageUrl', '') is string)
+        && (data.get('salesCount', 0) is int && data.get('salesCount', 0) >= 0);
     }
 
     match /products/{productId} {
       allow get, list: if true; // Public catalog
       allow create: if isAdmin() && isValidProduct(incoming()) && isValidId(productId);
-      allow update: if isAdmin() && isValidProduct(incoming());
+      allow update: if (isAdmin() && isValidProduct(incoming())) ||
+        (isSignedIn() && isValidProduct(incoming()) && incoming().diff(existing()).affectedKeys().hasOnly(['stock', 'salesCount']));
       allow delete: if isAdmin();
     }
 

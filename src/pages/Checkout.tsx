@@ -4,8 +4,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { CreditCard, Truck, ShieldCheck, CheckCircle2, ChevronLeft, Loader2, Zap } from 'lucide-react';
 import { useCartStore } from '../store/useCartStore';
 import { useAuth } from '../lib/AuthContext';
-import { db } from '../lib/firebase';
-import { collection, addDoc } from 'firebase/firestore';
+import { db, handleFirestoreError, OperationType } from '../lib/firebase';
+import { collection, doc, runTransaction } from 'firebase/firestore';
 import { getDirectImageUrl } from '../lib/utils';
 
 export const Checkout = () => {
@@ -89,12 +89,53 @@ export const Checkout = () => {
         paymentLast4: (cardData.number || '').replace(/\s/g, '').slice(-4) || '1234'
       };
       
-      await addDoc(collection(db, 'orders'), orderData);
+      await runTransaction(db, async (transaction) => {
+        // Read all product docs first
+        const productRefsAndData = await Promise.all(
+          items.map(async (item) => {
+            const productRef = doc(db, 'products', item.id);
+            const productSnap = await transaction.get(productRef);
+            return { item, ref: productRef, snap: productSnap };
+          })
+        );
+
+        // Verify stock of all products first before doing any writing
+        for (const { item, snap } of productRefsAndData) {
+          if (!snap.exists()) {
+            throw new Error(`El producto "${item.name}" no existe en el catálogo.`);
+          }
+          const currentStock = snap.data().stock !== undefined ? snap.data().stock : 0;
+          if (currentStock < item.quantity) {
+            throw new Error(`Lo sentimos, el producto "${item.name}" no tiene suficiente stock disponible. Restante: ${currentStock}`);
+          }
+        }
+
+        // Apply writes: decrement stock and increment salesCount
+        for (const { item, ref, snap } of productRefsAndData) {
+          const currentStock = snap.data().stock !== undefined ? snap.data().stock : 0;
+          const currentSales = snap.data().salesCount !== undefined ? snap.data().salesCount : 0;
+          transaction.update(ref, {
+            stock: currentStock - item.quantity,
+            salesCount: currentSales + item.quantity
+          });
+        }
+
+        // Add the order
+        const orderRef = doc(collection(db, 'orders'));
+        transaction.set(orderRef, orderData);
+      });
+
       clearCart();
       setStep(3);
     } catch (err) {
-      console.error('Error creating order:', err);
-      alert('Error procesando el pedido.');
+      console.error('Error creating order within transaction:', err);
+      const errorMsg = err instanceof Error ? err.message : 'Error procesando el pedido.';
+      alert(errorMsg);
+      if (!(err instanceof Error && err.message.includes('No tiene suficiente stock'))) {
+        try {
+          handleFirestoreError(err, OperationType.WRITE, 'orders_and_products_update');
+        } catch (ignored) {}
+      }
     } finally {
       setLoading(false);
     }
