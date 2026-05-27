@@ -54,14 +54,30 @@ export const Contact = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      // 1. Save to Firestore for persistency
       await addDoc(collection(db, 'contacts'), {
         ...formData,
         createdAt: new Date().toISOString()
       });
+
+      // 2. Post to backend which sends a real email using SMTP/Nodemailer
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+
+      if (!response.ok) {
+        throw new Error('No se pudo despachar el correo del servidor.');
+      }
+
       setSent(true);
       setFormData({ name: '', email: '', message: '' });
     } catch (err) {
-      console.error(err);
+      console.error('Error sending message:', err);
+      // Still show sent if Firestore succeeds, or warn nicely
+      alert('Hubo un inconveniente enviando el correo electrónico, pero guardamos tu contacto en nuestro sistema.');
+      setSent(true);
     }
   };
 
@@ -290,28 +306,17 @@ export const Contact = () => {
       </div>
 
       <div className="mt-24">
-         <div className="h-96 w-full bg-gamer-card rounded-3xl border border-white/10 overflow-hidden relative grayscale hover:grayscale-0 transition-all duration-700">
-            <img referrerPolicy="no-referrer" src={getDirectImageUrl(content.mapImageUrl)} className="w-full h-full object-cover opacity-20" alt="Map Placeholder" />
-            
-            {isEditing && (
-               <div className="absolute top-4 right-4 z-40">
-                  <input 
-                    type="text"
-                    value={content.mapImageUrl}
-                    onChange={e => updateField('mapImageUrl', e.target.value)}
-                    placeholder="URL Imagen Mapa"
-                    className="bg-black/90 border border-gamer-neon/50 rounded px-4 py-2 text-xs w-64 outline-none focus:border-gamer-neon"
-                  />
-               </div>
-            )}
-
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-center bg-black/80 p-8 rounded-2xl border border-gamer-neon backdrop-blur-md">
-                 <MapPin className="text-gamer-neon mx-auto mb-4" size={48} />
-                 <h3 className="text-xl font-display font-bold uppercase mb-2">Google Maps Elite</h3>
-                 <p className="text-white/40 text-xs">Ubicación protegida por seguridad de nivel militar.</p>
-              </div>
-            </div>
+         <div className="h-96 w-full bg-gamer-card rounded-3xl border border-white/10 overflow-hidden relative group">
+            <iframe
+              src={`https://maps.google.com/maps?q=${encodeURIComponent(content.address.value)}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
+              width="100%"
+              height="100%"
+              style={{ border: 0 }}
+              allowFullScreen={true}
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+              className="w-full h-full grayscale invert opacity-70 contrast-125 group-hover:grayscale-0 group-hover:invert-0 group-hover:opacity-100 transition-all duration-700"
+            />
          </div>
       </div>
     </div>

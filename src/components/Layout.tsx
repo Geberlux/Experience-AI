@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { ShoppingCart, User, Menu, X, LogOut, ChevronRight, Zap } from 'lucide-react';
 import { signOut } from 'firebase/auth';
 import { auth } from '../lib/firebase';
@@ -21,10 +21,25 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const removeItem = useCartStore((state) => state.removeItem);
   const updateQuantity = useCartStore((state) => state.updateQuantity);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const logout = () => signOut(auth);
 
   const cartCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
+
+  const getLinkClass = (path: string) => {
+    const isActive = location.pathname === path;
+    return isActive 
+      ? "text-gamer-neon font-bold tracking-widest relative after:absolute after:bottom-[-4px] after:left-0 after:w-full after:h-[2px] after:bg-gamer-neon transition-colors" 
+      : "text-white/70 hover:text-gamer-neon transition-colors";
+  };
+
+  const getAdminLinkClass = (path: string) => {
+    const isActive = location.pathname === path;
+    return isActive
+      ? "text-gamer-neon font-bold tracking-widest relative after:absolute after:bottom-[-4px] after:left-0 after:w-full after:h-[2px] after:bg-gamer-neon transition-colors"
+      : "text-gamer-accent hover:text-white transition-colors";
+  };
 
   return (
     <div className="min-h-screen flex flex-col font-sans">
@@ -42,13 +57,13 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             </Link>
 
             <div className="hidden md:flex items-center space-x-8 text-sm font-medium uppercase tracking-widest">
-              <Link to="/catalog" className="text-white/70 hover:text-gamer-neon transition-colors">Catálogo</Link>
-              <Link to="/about" className="text-white/70 hover:text-gamer-neon transition-colors">Quiénes Somos</Link>
-              <Link to="/contact" className="text-white/70 hover:text-gamer-neon transition-colors">Contacto</Link>
+              <Link to="/catalog" className={getLinkClass('/catalog')}>Catálogo</Link>
+              <Link to="/about" className={getLinkClass('/about')}>Quiénes Somos</Link>
+              <Link to="/contact" className={getLinkClass('/contact')}>Contacto</Link>
               {isAdmin && (
                 <>
-                  <Link to="/admin/orders" className="text-gamer-accent hover:text-white transition-colors">Pedidos</Link>
-                  <Link to="/admin/users" className="text-gamer-accent hover:text-white transition-colors">Usuarios</Link>
+                  <Link to="/admin/orders" className={getAdminLinkClass('/admin/orders')}>Pedidos</Link>
+                  <Link to="/admin/users" className={getAdminLinkClass('/admin/users')}>Usuarios</Link>
                 </>
               )}
             </div>
