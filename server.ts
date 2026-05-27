@@ -62,27 +62,23 @@ async function startServer() {
             </div>
           `;
 
-          const response = await fetch("https://api.resend.com/emails", {
+          const resendResponse = await fetch("https://api.resend.com/emails", {
             method: "POST",
             headers: {
               "Authorization": `Bearer ${resendApiKey}`,
               "Content-Type": "application/json"
             },
             body: JSON.stringify({
-              from: "onboarding@resend.dev",
+              from: "Experience Store <onboarding@resend.dev>",
               to: adminEmail,
               subject: `EXPERIENCE - Contacto de ${name}`,
-              reply_to: email, // Replay to the user's email directly
+              reply_to: email,
               html: htmlContent
             })
           });
 
-          const responseData = await response.json().catch(() => ({}));
-          if (response.ok) {
-            console.log("Email enviado con éxito mediante Resend API:", responseData);
-          } else {
-            console.error("Fallo por la API de Resend (Status " + response.status + "):", responseData);
-          }
+          const resendData = await resendResponse.json().catch(() => ({}));
+          console.log("Log de Control - Respuesta API:", resendData);
         } catch (mailErr: any) {
           console.error("ADVERTENCIA: No se pudo despachar el correo real a través de Resend (asíncrono):", mailErr.message);
         }
