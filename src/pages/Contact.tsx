@@ -7,7 +7,7 @@ import { getContactContent, updateContactContent, ContactContent, DEFAULT_CONTAC
 import { getDirectImageUrl } from '../lib/utils';
 
 export const Contact = () => {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
   const [content, setContent] = useState<ContactContent>(DEFAULT_CONTACT_CONTENT);
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -15,6 +15,16 @@ export const Contact = () => {
 
   const [formData, setFormData] = useState({ name: '', email: '', message: '' });
   const [sent, setSent] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setFormData(prev => ({
+        ...prev,
+        name: prev.name || user.displayName || '',
+        email: prev.email || user.email || ''
+      }));
+    }
+  }, [user]);
 
   useEffect(() => {
     const fetchContent = async () => {
