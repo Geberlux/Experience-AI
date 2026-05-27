@@ -47,23 +47,31 @@ ${message}
       const smtpUser = process.env.SMTP_USER;
       const smtpPass = process.env.SMTP_PASS;
 
-      if (smtpHost && smtpUser && smtpPass) {
+      if (smtpHost) {
         try {
           console.log(`Intentando conectar a servidor SMTP (${smtpHost})...`);
-          const transporter = nodemailer.createTransport({
+          const transporterOpts: any = {
             host: smtpHost,
             port: smtpPort,
             secure: smtpPort === 465, // true for port 465
-            auth: {
+            connectionTimeout: 8000, 
+            greetingTimeout: 8000,
+            tls: {
+              rejectUnauthorized: false // self-signed support
+            }
+          };
+
+          if (smtpUser && smtpPass) {
+            transporterOpts.auth = {
               user: smtpUser,
               pass: smtpPass,
-            },
-            connectionTimeout: 4000, // Timeout fast if wrong password/ip
-            greetingTimeout: 4000,
-          });
+            };
+          }
+
+          const transporter = nodemailer.createTransport(transporterOpts);
 
           const info = await transporter.sendMail({
-            from: `"${name}" <${smtpUser}>`, 
+            from: smtpUser ? `"${name}" <${smtpUser}>` : `"${name}" <${email}>`, 
             replyTo: email,
             to: "heber.martinez@davinci.edu.ar",
             subject: mailSubject,
@@ -71,17 +79,18 @@ ${message}
           });
           console.log("Email enviado con éxito por SMTP:", info.messageId);
         } catch (mailErr: any) {
-          console.error("ADVERTENCIA: No se pudo enviar el email real (confirma si SMTP_PASS o credenciales son correctas):", mailErr.message);
+          console.error("No se pudo enviar el correo real:", mailErr.message);
+          throw new Error(`Error en servidor de correo SMTP: ${mailErr.message}`);
         }
       } else {
-        console.log("SMTP no configurado o SMTP_PASS no está disponible. Resguardado en Firestore.");
+        console.log("SMTP no configurado en las variables de entorno. Resguardado solo en Firestore.");
+        throw new Error("El servidor no tiene configurado ningún servidor SMTP (SMTP_HOST en variables de entorno).");
       }
 
       res.json({ success: true, message: "Mensaje procesado correctamente" });
     } catch (error: any) {
       console.error("Error en /api/contact:", error);
-      // Ensure the frontend still succeeds gracefully
-      res.json({ success: true, message: "Mensaje procesado con fallback" });
+      res.status(500).json({ error: error.message || "No se pudo enviar el correo" });
     }
   });
 

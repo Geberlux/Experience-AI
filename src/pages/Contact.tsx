@@ -78,15 +78,16 @@ export const Contact = () => {
       });
 
       if (!response.ok) {
-        throw new Error('No se pudo despachar el correo del servidor.');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'No se pudo despachar el correo del servidor.');
       }
 
       setSent(true);
       setFormData({ name: '', email: '', message: '' });
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error sending message:', err);
-      // Still show sent if Firestore succeeds, or warn nicely
-      alert('Hubo un inconveniente enviando el correo electrónico, pero guardamos tu contacto en nuestro sistema.');
+      // Still show sent if Firestore succeeds, or warn nicely with the exact server error message
+      alert(`Hubo un inconveniente enviando el correo electrónico: ${err.message || err}. Sin embargo, resguardamos tus datos con éxito en nuestro sistema de base de datos.`);
       setSent(true);
     }
   };
