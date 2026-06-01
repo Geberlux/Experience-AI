@@ -4,7 +4,6 @@ import { createServer as createViteServer } from "vite";
 import path from "path";
 import { fileURLToPath } from "url";
 import mercadopago from 'mercadopago';
-import nodemailer from 'nodemailer';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -20,7 +19,7 @@ async function startServer() {
     res.json({ status: "ok" });
   });
 
-  // Contact Form Endpoint to send a real email via Nodemailer SMTP
+  // Contact Form Endpoint to send a real email via Resend HTTP API
   app.post("/api/contact", async (req, res) => {
     try {
       const { name, email, message, number } = req.body;
@@ -30,30 +29,22 @@ async function startServer() {
 
       console.log(`Mensaje de contacto recibido de: ${name} (${email}), número incremental: ${number}`);
 
-      const smtpHost = process.env.SMTP_HOST || "smtp.gmail.com";
-      const smtpPort = parseInt(process.env.SMTP_PORT || "465");
-      const smtpUser = process.env.SMTP_USER;
-      const smtpPass = process.env.SMTP_PASS;
+      const resendApiKey = process.env.RESEND_API_KEY;
+      const adminEmail = process.env.ADMIN_EMAIL || "curuzumartinez@gmail.com";
 
-      if (smtpUser && smtpPass) {
-        // Run in an independent try/catch block to keep it completely non-blocking to the client 
-        try {
-          const transporter = nodemailer.createTransport({
-            host: smtpHost,
-            port: smtpPort,
-            secure: smtpPort === 465, // true for 465, false for 587/other ports
-            auth: {
-              user: smtpUser,
-              pass: smtpPass,
-            },
-          });
-
-          await transporter.sendMail({
-            from: `"Experience Store" <${smtpUser}>`,
-            to: "curuzumartinez@gmail.com",
-            replyTo: email,
+      if (resendApiKey) {
+        // Run in an independent non-blocking async flow to prevent client delay or impact
+        fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${resendApiKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            from: 'Experience Store <onboarding@resend.dev>',
+            to: [adminEmail],
+            reply_to: email,
             subject: `EXPERIENCE - [CONTACTO#${number}]`,
-            text: `Mensaje de contacto de ${name || 'Usuario'}\nEmail del remitente: ${email}\n\nMensaje:\n${message}`,
             html: `
               <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 25px; border: 1px solid #e5e7eb; border-radius: 16px; background-color: #0d0e12; color: #ffffff;">
                 <h2 style="color: #00ff88; border-bottom: 2px solid #00ff88; padding-bottom: 15px; margin-top: 0; font-family: monospace; letter-spacing: -0.05em; text-transform: uppercase;">EXPERIENCE - [CONTACTO#${number}]</h2>
@@ -72,18 +63,19 @@ async function startServer() {
                 </div>
 
                 <p style="font-size: 11px; color: rgba(255, 255, 255, 0.3); margin-top: 30px; text-align: center; border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 15px; font-family: monospace;">
-                  Mensaje enviado de forma automatizada mediante Nodemailer SMTP.
+                  Mensaje enviado de forma automatizada mediante Resend HTTP API.
                 </p>
               </div>
             `
-          });
-
-          console.log(`Control de Envío Directo via SMTP - Mensaje [CONTACTO#${number}] enviado de forma exitosa.`);
-        } catch (error) {
-          console.error("Error crítico capturado en consola durante el envío directo:", error);
-        }
+          })
+        }).then(async (response) => {
+          const data = await response.json().catch(() => ({}));
+          console.log("Control de Envío Directo via Resend - Respuesta:", data);
+        }).catch((error) => {
+          console.error("Error crítico capturado en consola durante el envío directo via Resend:", error);
+        });
       } else {
-        console.warn("ADVERTENCIA: SMTP_USER y/o SMTP_PASS no están configurados en las variables de entorno.");
+        console.warn("ADVERTENCIA: RESEND_API_KEY no está configurada en las variables de entorno.");
       }
 
       // Always return success immediately to keep the client experience fluid and non-blocking
