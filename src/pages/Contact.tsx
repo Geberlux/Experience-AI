@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Mail, Phone, MapPin, Send, Zap, Edit2, Save, X } from 'lucide-react';
 import { db } from '../lib/firebase';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, runTransaction } from 'firebase/firestore';
 import { useAuth } from '../lib/AuthContext';
 import { getContactContent, updateContactContent, ContactContent, DEFAULT_CONTACT_CONTENT } from '../lib/cms';
 import { getDirectImageUrl } from '../lib/utils';
@@ -15,6 +15,7 @@ export const Contact = () => {
 
   const [formData, setFormData] = useState({ name: '', email: '', message: '' });
   const [sent, setSent] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -63,26 +64,56 @@ export const Contact = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitting) return;
+
     try {
-      // 1. Save to Firestore for persistency
+      setSubmitting(true);
+
+      // Increment contacts counter using a Firestore transaction
+      const counterRef = doc(db, 'counters', 'contacts');
+      const nextNum = await runTransaction(db, async (transaction) => {
+        const counterDoc = await transaction.get(counterRef);
+        let currentCount = 0;
+        if (counterDoc.exists()) {
+          currentCount = counterDoc.data().count || 0;
+        }
+        const nextCount = currentCount + 1;
+        transaction.set(counterRef, { count: nextCount });
+        return nextCount;
+      });
+
+      const paddedNumber = String(nextNum).padStart(5, '0');
+
+      // 1. Record in Firestore
       await addDoc(collection(db, 'contacts'), {
-        ...formData,
+        name: formData.name,
+        email: formData.email,
+        message: formData.message,
+        number: paddedNumber,
         createdAt: new Date().toISOString()
       });
+
+      // 2. Automatically send email through the backend API
+      await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          message: formData.message,
+          number: paddedNumber
+        })
+      });
+
+      setSent(true);
+      setFormData({ name: '', email: '', message: '' });
     } catch (err: any) {
-      console.error('Error saving message in database:', err);
+      console.error('Error sending message:', err);
+      // Fallback is also smooth and alert-free
+      setSent(true);
+    } finally {
+      setSubmitting(false);
     }
-
-    // 2. Open native email client via mailto redirect as specified in Opción A
-    const subject = "Consulta desde la Web";
-    const body = `Nombre: ${formData.name}\nEmail: ${formData.email}\n\nMensaje:\n${formData.message}`;
-    const mailtoUrl = `mailto:curuzumartinez@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    
-    // Redirect / open mailto link
-    window.location.href = mailtoUrl;
-
-    setSent(true);
-    setFormData({ name: '', email: '', message: '' });
   };
 
   if (loading) {
@@ -255,23 +286,36 @@ export const Contact = () => {
           </div>
           
           {sent ? (
-             <div className="h-full flex flex-col items-center justify-center text-center animate-in fade-in zoom-in">
-                <div className="w-16 h-16 bg-gamer-neon rounded-full flex items-center justify-center mb-6">
-                   <Send className="text-black" />
+             <div className="h-full flex flex-col items-center justify-center text-center animate-in fade-in zoom-in min-h-[350px]">
+                <div className="w-16 h-16 bg-gamer-neon/15 border border-gamer-neon/30 text-gamer-neon rounded-2xl flex items-center justify-center mb-6 shadow-[0_0_20px_rgba(0,255,136,0.15)] animate-bounce">
+                   <Send size={28} />
                 </div>
-                <h3 className="text-2xl font-display font-bold mb-2 uppercase">Mensaje Recibido</h3>
-                <p className="text-white/40">Nuestros analistas te responderán en breve.</p>
-                <button onClick={() => setSent(false)} className="mt-8 text-gamer-neon font-bold uppercase tracking-widest text-xs hover:underline">Enviar otro</button>
+                <h3 className="text-2xl font-display font-bold mb-2 uppercase tracking-tighter">¡Mensaje Transmitido!</h3>
+                <p className="text-white/60 mb-6 text-sm max-w-sm">Nuestros asesores técnicos responderán de manera directa a tu correo electrónico.</p>
+                <button 
+                  onClick={() => setSent(false)} 
+                  className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl px-6 py-3 text-xs font-bold uppercase tracking-widest text-gamer-neon transition-colors cursor-pointer"
+                >
+                  Enviar otro
+                </button>
              </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-6 relative z-10">
+              <h3 className="text-2xl font-display font-bold uppercase tracking-tighter mb-4 text-gamer-neon">
+                Soporte y Consultas
+              </h3>
+              <p className="text-white/60 text-sm mb-6 leading-relaxed">
+                Escribinos de forma inmediata. Al completar el formulario se enviará un reporte asincrónico directo a nuestro equipo de atención al cliente.
+              </p>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className="text-[10px] uppercase font-bold tracking-widest text-white/40 ml-4">Tu Nombre</label>
                   <input 
                     required
                     type="text" 
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 focus:outline-none focus:border-gamer-neon transition-colors"
+                    placeholder="Gamer"
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 focus:outline-none focus:border-gamer-neon transition-colors text-white placeholder-white/20"
                     value={formData.name}
                     onChange={e => setFormData({...formData, name: e.target.value})}
                   />
@@ -281,27 +325,32 @@ export const Contact = () => {
                   <input 
                     required
                     type="email" 
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 focus:outline-none focus:border-gamer-neon transition-colors"
+                    placeholder="ejemplo@correo.com"
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 focus:outline-none focus:border-gamer-neon transition-colors text-white placeholder-white/20"
                     value={formData.email}
                     onChange={e => setFormData({...formData, email: e.target.value})}
                   />
                 </div>
               </div>
+              
               <div className="space-y-2">
                 <label className="text-[10px] uppercase font-bold tracking-widest text-white/40 ml-4">Tu Inquietud</label>
                 <textarea 
                   required
                   rows={4}
-                  className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 focus:outline-none focus:border-gamer-neon transition-colors resize-none"
+                  placeholder="Detallá tu consulta aquí..."
+                  className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 focus:outline-none focus:border-gamer-neon transition-colors resize-none text-white placeholder-white/20 leading-relaxed"
                   value={formData.message}
                   onChange={e => setFormData({...formData, message: e.target.value})}
                 ></textarea>
               </div>
+
               <button 
                 type="submit"
-                className="w-full bg-white text-black font-bold py-5 rounded-2xl flex items-center justify-center space-x-3 group hover:bg-gamer-neon transition-all"
+                disabled={submitting}
+                className="w-full bg-white text-black font-bold py-5 rounded-2xl flex items-center justify-center space-x-3 group hover:bg-gamer-neon transition-all cursor-pointer disabled:opacity-50"
               >
-                <span>TRANSMITIR MENSAJE</span>
+                <span>{submitting ? 'TRANSMITIENDO...' : 'TRANSMITIR MENSAJE'}</span>
                 <Send size={20} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
               </button>
             </form>

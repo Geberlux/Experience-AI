@@ -83,6 +83,11 @@ service cloud.firestore {
       allow read: if isAdmin();
     }
 
+    // --- Counters ---
+    match /counters/{counterId} {
+      allow read, write: if true;
+    }
+
     // --- Admin List (Write Protected) ---
     match /admins/{userId} {
       allow read: if isSignedIn();
