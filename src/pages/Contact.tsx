@@ -69,26 +69,20 @@ export const Contact = () => {
         ...formData,
         createdAt: new Date().toISOString()
       });
-
-      // 2. Post to backend which sends a real email using Resend API (non-blocking)
-      try {
-        await fetch('/api/contact', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(formData)
-        });
-      } catch (mailErr) {
-        console.error('Error in background email delivery:', mailErr);
-      }
-
-      setSent(true);
-      setFormData({ name: '', email: '', message: '' });
     } catch (err: any) {
       console.error('Error saving message in database:', err);
-      // Fallback is also smooth and alert-free
-      setSent(true);
-      setFormData({ name: '', email: '', message: '' });
     }
+
+    // 2. Open native email client via mailto redirect as specified in Opción A
+    const subject = "Consulta desde la Web";
+    const body = `Nombre: ${formData.name}\nEmail: ${formData.email}\n\nMensaje:\n${formData.message}`;
+    const mailtoUrl = `mailto:curuzumartinez@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    
+    // Redirect / open mailto link
+    window.location.href = mailtoUrl;
+
+    setSent(true);
+    setFormData({ name: '', email: '', message: '' });
   };
 
   if (loading) {
